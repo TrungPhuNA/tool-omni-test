@@ -1,76 +1,103 @@
-const { Scenario, Collection } = require('../models');
 const scenarioService = require('../services/scenario.service');
 
 class ScenarioController {
-  async getAll(req, res) {
-    try {
-      const scenarios = await Scenario.findAll();
-      res.json({ status: 'success', data: scenarios });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async getAll(req, res, next) {
+        try {
+            const scenarios = await scenarioService.getAll();
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: scenarios
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async getByCollection(req, res) {
-    try {
-      const { collectionId } = req.params;
-      const scenarios = await Scenario.findAll({ where: { collection_id: collectionId } });
-      res.json({ status: 'success', data: scenarios });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async getByCollection(req, res, next) {
+        try {
+            const { collectionId } = req.params;
+            const scenarios = await scenarioService.getByCollectionId(collectionId);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: scenarios
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async create(req, res) {
-    try {
-      const { name, collection_id, steps, stop_on_error } = req.body;
-      const scenario = await Scenario.create({ name, collection_id, steps, stop_on_error });
-      res.status(201).json({ status: 'success', data: scenario });
-    } catch (error) {
-      res.status(400).json({ status: 'error', message: error.message });
+    async create(req, res, next) {
+        try {
+            const scenario = await scenarioService.create(req.body);
+            res.status(201).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: scenario
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      const { name, steps, stop_on_error } = req.body;
-      const scenario = await Scenario.findByPk(id);
-      if (!scenario) return res.status(404).json({ status: 'error', message: 'Scenario not found' });
-      
-      await scenario.update({ name, steps, stop_on_error });
-      res.json({ status: 'success', data: scenario });
-    } catch (error) {
-      res.status(400).json({ status: 'error', message: error.message });
+    async update(req, res, next) {
+        try {
+            const { id } = req.params;
+            const scenario = await scenarioService.update(id, req.body);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: scenario
+            });
+        } catch (error) {
+            if (error.message === 'Không tìm thấy kịch bản để cập nhật') {
+                return res.status(404).json({
+                    status: 'fail',
+                    code: 'NOT_FOUND',
+                    message: error.message
+                });
+            }
+            next(error);
+        }
     }
-  }
 
-  async delete(req, res) {
-    try {
-      const { id } = req.params;
-      const scenario = await Scenario.findByPk(id);
-      if (!scenario) return res.status(404).json({ status: 'error', message: 'Scenario not found' });
-      
-      await scenario.destroy();
-      res.json({ status: 'success', message: 'Scenario deleted' });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async delete(req, res, next) {
+        try {
+            const { id } = req.params;
+            await scenarioService.delete(id);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                message: 'Xoá kịch bản thành công'
+            });
+        } catch (error) {
+            if (error.message === 'Không tìm thấy kịch bản để xoá') {
+                return res.status(404).json({
+                    status: 'fail',
+                    code: 'NOT_FOUND',
+                    message: error.message
+                });
+            }
+            next(error);
+        }
     }
-  }
 
-  async run(req, res) {
-    try {
-      const { id } = req.params;
-      const { variables } = req.body;
-      const scenario = await Scenario.findByPk(id);
-      if (!scenario) return res.status(404).json({ status: 'error', message: 'Scenario not found' });
-      
-      const result = await scenarioService.run(scenario, variables);
-      res.json({ status: 'success', data: result });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async run(req, res, next) {
+        try {
+            const { id } = req.params;
+            const { variables } = req.body;
+            const scenario = await scenarioService.getById(id);
+            const result = await scenarioService.run(scenario, variables);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: result
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 }
 
 module.exports = new ScenarioController();

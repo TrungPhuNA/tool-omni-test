@@ -1,51 +1,60 @@
-const { TestHistory, Request } = require('../models');
+const historyService = require('../services/history.service');
 
-exports.getAll = async (req, res) => {
-  try {
-    const { type, status, limit = 50 } = req.query;
-    const where = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
+class HistoryController {
+  async getAll(req, res, next) {
+    try {
+      const { requestId, limit } = req.query;
+      const history = await historyService.getAll({ requestId }, limit);
 
-    const history = await TestHistory.findAll({
-      where,
-      limit: parseInt(limit),
-      order: [['createdAt', 'DESC']],
-      include: [{ 
-        model: Request, 
-        as: 'request',
-        attributes: ['name', 'method', 'url'] 
-      }]
-    });
-
-    res.json({
-      status: 'success',
-      data: history
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
-
-exports.getById = async (req, res) => {
-  try {
-    const history = await TestHistory.findByPk(req.params.id, {
-      include: [{ model: Request }]
-    });
-    if (!history) {
-      return res.status(404).json({ status: 'fail', message: 'History not found' });
+      res.status(200).json({
+        status: 'success',
+        code: 'SUCCESS',
+        data: history
+      });
+    } catch (error) {
+      next(error);
     }
-    res.json({ status: 'success', data: history });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
   }
-};
 
-exports.delete = async (req, res) => {
-  try {
-    await TestHistory.destroy({ where: { id: req.params.id } });
-    res.json({ status: 'success', message: 'History deleted' });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+  async getById(req, res, next) {
+    try {
+      const history = await historyService.getById(req.params.id);
+      res.status(200).json({
+        status: 'success',
+        code: 'SUCCESS',
+        data: history
+      });
+    } catch (error) {
+      if (error.message === 'Không tìm thấy lịch sử thử nghiệm') {
+        return res.status(404).json({
+          status: 'fail',
+          code: 'NOT_FOUND',
+          message: error.message
+        });
+      }
+      next(error);
+    }
   }
-};
+
+  async delete(req, res, next) {
+    try {
+      await historyService.delete(req.params.id);
+      res.status(200).json({
+        status: 'success',
+        code: 'SUCCESS',
+        message: 'Xoá lịch sử thành công'
+      });
+    } catch (error) {
+      if (error.message === 'Không tìm thấy lịch sử để xoá') {
+        return res.status(404).json({
+          status: 'fail',
+          code: 'NOT_FOUND',
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+}
+
+module.exports = new HistoryController();

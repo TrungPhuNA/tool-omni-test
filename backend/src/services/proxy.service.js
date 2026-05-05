@@ -1,9 +1,10 @@
 const axios = require('axios');
 const authAutomator = require('./auth_automator.service');
+const historyRepository = require('../repositories/history.repository');
 
 class ProxyService {
   async executeRequest(config) {
-    let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {} } = config;
+    let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {}, requestId = null } = config;
     
     // 0. Inject biến môi trường vào URL, Headers, Body, Params
     url = this.injectVariables(url, variables);
@@ -44,6 +45,7 @@ class ProxyService {
     }
 
     const startTime = Date.now();
+    let result;
     try {
       const response = await axios({
         method,
@@ -58,7 +60,7 @@ class ProxyService {
       const endTime = Date.now();
       const responseTime = endTime - startTime;
       
-      return {
+      result = {
         statusCode: response.status,
         statusText: response.statusText,
         headers: response.headers,
@@ -68,7 +70,7 @@ class ProxyService {
       };
     } catch (error) {
       const endTime = Date.now();
-      return {
+      result = {
         statusCode: error.response?.status || 500,
         statusText: error.response?.statusText || 'Error',
         headers: error.response?.headers || {},
@@ -77,6 +79,20 @@ class ProxyService {
         error: error.message
       };
     }
+
+    // 2. Lưu lịch sử (Background - không chặn response trả về cho user)
+    // Dùng repository thay vì gọi model trực tiếp ở đây
+    historyRepository.create({
+      request_id: requestId,
+      type: 'functional',
+      status: result.statusCode < 400 ? 'pass' : 'fail',
+      duration: result.responseTime,
+      status_code: result.statusCode,
+      response: result.body,
+      assert_result: null
+    }).catch(err => console.error('Lỗi lưu lịch sử:', err));
+
+    return result;
   }
 
   // Inject biến môi trường vào string

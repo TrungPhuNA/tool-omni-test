@@ -1,16 +1,32 @@
-const folderRepo = require('../repositories/folder.repository');
+const folderRepository = require('../repositories/folder.repository');
 
 class FolderService {
-  async createFolder(data) {
-    return await folderRepo.create(data);
+  async create(data) {
+    return await folderRepository.create(data);
   }
 
-  async updateFolder(id, data) {
-    return await folderRepo.update(id, data);
+  async update(id, data) {
+    const folder = await folderRepository.update(id, data);
+    if (!folder) {
+      throw new Error('Không tìm thấy thư mục để cập nhật');
+    }
+    return folder;
   }
 
-  async deleteFolder(id) {
-    return await folderRepo.delete(id);
+  async delete(id) {
+    const deleted = await folderRepository.delete(id);
+    if (!deleted) {
+      throw new Error('Không tìm thấy thư mục để xoá');
+    }
+    return true;
+  }
+
+  async getById(id) {
+    const folder = await folderRepository.findByPk(id);
+    if (!folder) {
+      throw new Error('Không tìm thấy thư mục');
+    }
+    return folder;
   }
 }
 

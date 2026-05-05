@@ -1,53 +1,71 @@
-const { Environment } = require('../models');
+const environmentService = require('../services/environment.service');
 
 class EnvironmentController {
-  async getAll(req, res) {
-    try {
-      const environments = await Environment.findAll();
-      res.json({ status: 'success', data: environments });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async getAll(req, res, next) {
+        try {
+            const environments = await environmentService.getAll();
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: environments
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async create(req, res) {
-    try {
-      const { name, variables } = req.body;
-      const environment = await Environment.create({ name, variables });
-      res.status(201).json({ status: 'success', data: environment });
-    } catch (error) {
-      res.status(400).json({ status: 'error', message: error.message });
+    async create(req, res, next) {
+        try {
+            const environment = await environmentService.create(req.body);
+            res.status(201).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: environment
+            });
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      const { name, variables } = req.body;
-      const environment = await Environment.findByPk(id);
-      if (!environment) {
-        return res.status(404).json({ status: 'error', message: 'Environment not found' });
-      }
-      await environment.update({ name, variables });
-      res.json({ status: 'success', data: environment });
-    } catch (error) {
-      res.status(400).json({ status: 'error', message: error.message });
+    async update(req, res, next) {
+        try {
+            const environment = await environmentService.update(req.params.id, req.body);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                data: environment
+            });
+        } catch (error) {
+            if (error.message === 'Không tìm thấy môi trường để cập nhật') {
+                return res.status(404).json({
+                    status: 'fail',
+                    code: 'NOT_FOUND',
+                    message: error.message
+                });
+            }
+            next(error);
+        }
     }
-  }
 
-  async delete(req, res) {
-    try {
-      const { id } = req.params;
-      const environment = await Environment.findByPk(id);
-      if (!environment) {
-        return res.status(404).json({ status: 'error', message: 'Environment not found' });
-      }
-      await environment.destroy();
-      res.json({ status: 'success', message: 'Environment deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ status: 'error', message: error.message });
+    async delete(req, res, next) {
+        try {
+            await environmentService.delete(req.params.id);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                message: 'Xoá môi trường thành công'
+            });
+        } catch (error) {
+            if (error.message === 'Không tìm thấy môi trường để xoá') {
+                return res.status(404).json({
+                    status: 'fail',
+                    code: 'NOT_FOUND',
+                    message: error.message
+                });
+            }
+            next(error);
+        }
     }
-  }
 }
 
 module.exports = new EnvironmentController();

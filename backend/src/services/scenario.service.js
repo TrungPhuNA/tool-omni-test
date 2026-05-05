@@ -1,7 +1,38 @@
 const proxyService = require('./proxy.service');
-const { Request } = require('../models');
+const scenarioRepository = require('../repositories/scenario.repository');
+const requestRepository = require('../repositories/request.repository');
 
 class ScenarioService {
+  async getAll() {
+    return await scenarioRepository.findAll();
+  }
+
+  async getByCollectionId(collectionId) {
+    return await scenarioRepository.findByCollectionId(collectionId);
+  }
+
+  async getById(id) {
+    const scenario = await scenarioRepository.findById(id);
+    if (!scenario) throw new Error('Không tìm thấy kịch bản');
+    return scenario;
+  }
+
+  async create(data) {
+    return await scenarioRepository.create(data);
+  }
+
+  async update(id, data) {
+    const scenario = await scenarioRepository.update(id, data);
+    if (!scenario) throw new Error('Không tìm thấy kịch bản để cập nhật');
+    return scenario;
+  }
+
+  async delete(id) {
+    const deleted = await scenarioRepository.delete(id);
+    if (!deleted) throw new Error('Không tìm thấy kịch bản để xoá');
+    return true;
+  }
+
   /**
    * Chạy kịch bản test tuần tự
    * @param {Object} scenario { steps: [{ requestId, extractors: [{ key, path }] }] }
@@ -12,7 +43,7 @@ class ScenarioService {
     const context = { ...globalVars }; // Chứa các biến động được trích xuất
     
     for (const step of scenario.steps) {
-      const requestModel = await Request.findByPk(step.requestId);
+      const requestModel = await requestRepository.getById(step.requestId);
       if (!requestModel) {
         results.push({ step, error: 'Request not found' });
         if (scenario.stop_on_error) break;
@@ -58,9 +89,13 @@ class ScenarioService {
 
   injectObject(obj, vars) {
     if (!obj) return obj;
-    const str = typeof obj === 'string' ? obj : JSON.stringify(obj);
-    const injectedStr = proxyService.injectVariables(str, vars);
-    return JSON.parse(injectedStr);
+    try {
+      const str = typeof obj === 'string' ? obj : JSON.stringify(obj);
+      const injectedStr = proxyService.injectVariables(str, vars);
+      return JSON.parse(injectedStr);
+    } catch (e) {
+      return obj;
+    }
   }
 }
 
