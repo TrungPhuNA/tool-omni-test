@@ -3,8 +3,34 @@ const authAutomator = require('./auth_automator.service');
 
 class ProxyService {
   async executeRequest(config) {
-    let { method, url, headers = {}, body = {}, params = {}, authConfig } = config;
+    let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {} } = config;
     
+    // 0. Inject biến môi trường vào URL, Headers, Body, Params
+    url = this.injectVariables(url, variables);
+    
+    // Inject vào headers
+    Object.keys(headers).forEach(key => {
+      headers[key] = this.injectVariables(headers[key], variables);
+    });
+
+    // Inject vào params
+    Object.keys(params).forEach(key => {
+      params[key] = this.injectVariables(params[key], variables);
+    });
+
+    // Inject vào body nếu là string (JSON) hoặc object
+    if (typeof body === 'string') {
+      body = this.injectVariables(body, variables);
+    } else if (typeof body === 'object') {
+      const bodyStr = JSON.stringify(body);
+      const injectedBodyStr = this.injectVariables(bodyStr, variables);
+      try {
+        body = JSON.parse(injectedBodyStr);
+      } catch (e) {
+        body = injectedBodyStr;
+      }
+    }
+
     // 1. Xử lý Auth Automator nếu có
     if (authConfig && authConfig.enabled && authConfig.loginUrl) {
       try {

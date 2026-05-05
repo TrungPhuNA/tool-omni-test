@@ -1,16 +1,22 @@
-const { Collection, Request } = require('../models');
+const { Collection, Request, Scenario } = require('../models');
 
 class CollectionRepository {
   async getAll() {
     return await Collection.findAll({
-      include: [{ model: Request, as: 'requests' }],
+      include: [
+        { model: Request, as: 'requests' },
+        { model: Scenario, as: 'scenarios' }
+      ],
       order: [['created_at', 'DESC']]
     });
   }
 
   async getById(id) {
     return await Collection.findByPk(id, {
-      include: [{ model: Request, as: 'requests' }]
+      include: [
+        { model: Request, as: 'requests' },
+        { model: Scenario, as: 'scenarios' }
+      ]
     });
   }
 

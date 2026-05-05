@@ -686,31 +686,32 @@ Response: {
 
 ## Lộ trình triển khai chi tiết
 
-### 🗓️ Tuần 1: MVP — Request Builder hoạt động
+### 🗓️ Tuần 1: MVP — Request Builder hoạt động [DONE]
 
 **Backend:**
-- [ ] Init project Express + Sequelize + MySQL
-- [ ] Tạo Models + Migration files (có comment đầy đủ từng cột)
-- [ ] Implement `proxy.service.js` (gọi target API, đo response time)
-- [ ] Route `POST /api/proxy/execute`
-- [ ] Route CRUD Collection + Request
+- [x] Init project Express + Sequelize + MySQL
+- [x] Tạo Models + Migration files (có comment đầy đủ từng cột)
+- [x] Implement `proxy.service.js` (gọi target API, đo response time)
+- [x] Route `POST /api/proxy/execute`
+- [x] Route CRUD Collection + Request
 
 **Frontend:**
-- [ ] Init Vite + React + TailwindCSS + shadcn/ui
-- [ ] Layout 3 cột: Sidebar Collections | Request Builder | Response Viewer
-- [ ] Component `RequestBuilder`: Method selector, URL input, Headers/Params/Body tabs
-- [ ] Gọi proxy và hiển thị response (status, body, time)
+- [x] Init Vite + React + TailwindCSS + shadcn/ui
+- [x] Layout 3 cột: Sidebar Collections | Request Builder | Response Viewer
+- [x] Component `RequestBuilder`: Method selector, URL input, Headers/Params/Body tabs
+- [x] Gọi proxy và hiển thị response (status, body, time)
 
 ---
 
-### 🗓️ Tuần 2: Auth Automator + Environment + Scenario Runner
+### 🗓️ Tuần 2: Auth Automator + Environment + Scenario Runner [IN PROGRESS]
 
 **Backend:**
-- [ ] Implement `auth.service.js` (tự động login, extract token)
-- [ ] Integrate auth vào proxy flow
+- [x] Implement `auth_automator.service.js` (tự động login, extract token)
+- [x] Integrate auth vào proxy flow
 - [ ] Route CRUD Environment
-- [ ] Model + Migration `Scenario`
-- [ ] Implement `scenario.service.js` (chạy tuần tự, inject biến qua `scenarioContext`, extractor)
+- [x] Model + Migration `Scenario`
+- [x] Implement `scenario.service.js` (chạy tuần tự, inject biến qua `scenarioContext`, extractor)
+- [ ] Route `POST /api/v1/scenarios/:id/run`
 - [ ] Route `POST /api/v1/scenarios/:id/run`
 
 **Frontend:**

@@ -32,6 +32,8 @@ const authRoutes = require('./src/routes/auth.route');
 const proxyRoutes = require('./src/routes/proxy.route');
 const collectionRoutes = require('./src/routes/collection.route');
 const requestRoutes = require('./src/routes/request.route');
+const environmentRoutes = require('./src/routes/environment.route');
+const scenarioRoutes = require('./src/routes/scenario.route');
 
 // Import Middleware
 const authMiddleware = require('./src/middlewares/auth.middleware');
@@ -42,6 +44,8 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/proxy', authMiddleware, proxyRoutes);
 app.use('/api/v1/collections', authMiddleware, collectionRoutes);
 app.use('/api/v1/requests', authMiddleware, requestRoutes);
+app.use('/api/v1/environments', authMiddleware, environmentRoutes);
+app.use('/api/v1/scenarios', authMiddleware, scenarioRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

@@ -5,13 +5,21 @@ const useStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
   collections: [],
+  environments: [],
+  activeEnvironment: null,
   activeCollection: null,
   activeRequest: {
     method: 'GET',
     url: '',
     headers: [],
     body: '',
-    params: []
+    params: [],
+    authConfig: {
+      enabled: false,
+      loginUrl: '',
+      loginBody: '',
+      tokenPath: 'data.token'
+    }
   },
   response: null,
   isLoading: false,
@@ -25,7 +33,7 @@ const useStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    set({ user: null, token: null });
+    set({ user: null, token: null, environments: [], activeEnvironment: null });
   },
 
   setCollections: (collections) => set({ collections }),
@@ -83,6 +91,58 @@ const useStore = create((set, get) => ({
       return res.data.data;
     } catch (err) {
       console.error('Failed to save request', err);
+    }
+  },
+
+  fetchEnvironments: async () => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      const res = await axios.get(`${API_URL}/environments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      set({ environments: res.data.data });
+      if (res.data.data.length > 0 && !get().activeEnvironment) {
+        set({ activeEnvironment: res.data.data[0] });
+      }
+    } catch (err) {
+      console.error('Failed to fetch environments', err);
+    }
+  },
+
+  setActiveEnvironment: (activeEnvironment) => set({ activeEnvironment }),
+
+  saveEnvironment: async (envData) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      let res;
+      if (envData.id) {
+        res = await axios.put(`${API_URL}/environments/${envData.id}`, envData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } else {
+        res = await axios.post(`${API_URL}/environments`, envData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+      await get().fetchEnvironments();
+      return res.data.data;
+    } catch (err) {
+      console.error('Failed to save environment', err);
+    }
+  },
+
+  deleteEnvironment: async (id) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.delete(`${API_URL}/environments/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchEnvironments();
+    } catch (err) {
+      console.error('Failed to delete environment', err);
     }
   },
 
