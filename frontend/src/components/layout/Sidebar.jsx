@@ -16,10 +16,12 @@ import {
   Trash2,
   FileCode,
   Copy,
-  FileJson
+  FileJson,
+  FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
+import ExportDocModal from '../features/builder/ExportDocModal';
 
 const Sidebar = ({ 
   expandedCollections, 
@@ -42,6 +44,7 @@ const Sidebar = ({
   const [expandedFolders, setExpandedFolders] = useState({});
   const [expandedRequests, setExpandedRequests] = useState({});
   const [dragOverId, setDragOverId] = useState(null);
+  const [exportModal, setExportModal] = useState({ isOpen: false, folder: null, requests: [] });
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
@@ -217,6 +220,17 @@ const Sidebar = ({
                             <span className="text-xs font-medium text-dark-300">{folder.name}</span>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const folderReqs = col.requests?.filter(r => r.folder_id === folder.id) || [];
+                                setExportModal({ isOpen: true, folder, requests: folderReqs });
+                              }}
+                              className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 cursor-pointer"
+                              title="Xuất tài liệu (Doc)"
+                            >
+                              <FileText className="w-3 h-3" />
+                            </button>
                             <button 
                               onClick={(e) => handleImportCurl(e, col.id, folder.id)}
                               className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-blue-500"
@@ -489,6 +503,12 @@ const Sidebar = ({
           Environments
         </button>
       </div>
+      <ExportDocModal
+        isOpen={exportModal.isOpen}
+        onClose={() => setExportModal({ ...exportModal, isOpen: false })}
+        folder={exportModal.folder || {}}
+        requests={exportModal.requests}
+      />
     </aside>
   );
 };
