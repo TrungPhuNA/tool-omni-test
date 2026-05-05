@@ -8,6 +8,8 @@ import ScenarioRunner from '../components/features/scenarios/ScenarioRunner';
 import Toast from '../components/common/Toast';
 import CollectionModal from '../components/features/collections/CollectionModal';
 import EnvironmentModal from '../components/features/environments/EnvironmentModal';
+import History from './History';
+import LoadTest from './LoadTest';
 
 const Home = () => {
     const {
@@ -28,7 +30,7 @@ const Home = () => {
     } = useStore();
 
     const [expandedCollections, setExpandedCollections] = useState({});
-    const [viewMode, setViewMode] = useState('builder'); // 'builder' or 'scenario'
+    const [viewMode, setViewMode] = useState('builder'); // 'builder', 'scenario', 'history', or 'loadtest'
     const [activeScenario, setActiveScenario] = useState(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,6 +149,7 @@ const Home = () => {
                 activeRequest={activeRequest}
                 activeScenario={activeScenario}
                 viewMode={viewMode}
+                setViewMode={setViewMode}
                 setIsModalOpen={setIsModalOpen}
                 setIsEnvModalOpen={setIsEnvModalOpen}
             />
@@ -168,13 +171,17 @@ const Home = () => {
                             <ResponsePanel response={response} />
                         </div>
                     </>
-                ) : (
+                ) : viewMode === 'scenario' ? (
                     <ScenarioRunner
                         scenario={activeScenario}
                         collections={collections}
                         activeEnvironment={activeEnvironment}
                         showToast={showToast}
                     />
+                ) : viewMode === 'history' ? (
+                    <History />
+                ) : (
+                    <LoadTest />
                 )}
             </div>
 

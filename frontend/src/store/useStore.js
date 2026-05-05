@@ -6,6 +6,7 @@ const useStore = create((set, get) => ({
   token: localStorage.getItem('token') || null,
   collections: [],
   environments: [],
+  history: [],
   activeEnvironment: null,
   activeCollection: null,
   activeRequest: {
@@ -54,6 +55,20 @@ const useStore = create((set, get) => ({
       set({ collections: res.data.data });
     } catch (err) {
       console.error('Failed to fetch collections', err);
+    }
+  },
+
+  fetchHistory: async (params = {}) => {
+    const { token } = get();
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+      const res = await axios.get(`${API_URL}/history`, {
+        params,
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      set({ history: res.data.data });
+    } catch (error) {
+      console.error('Failed to fetch history', error);
     }
   },
 

@@ -9,7 +9,8 @@ import {
   LogOut, 
   User as UserIcon, 
   History, 
-  Settings 
+  Settings,
+  Zap
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 
@@ -21,6 +22,7 @@ const Sidebar = ({
   activeRequest, 
   activeScenario, 
   viewMode,
+  setViewMode,
   setIsModalOpen,
   setIsEnvModalOpen
 }) => {
@@ -121,7 +123,17 @@ const Sidebar = ({
             <LogOut className="w-4 h-4" />
           </button>
         </div>
-        <button className="flex items-center gap-3 w-full p-2 hover:bg-dark-800 rounded-lg text-sm text-dark-400 transition-all cursor-pointer">
+        <button 
+          onClick={() => setViewMode('loadtest')}
+          className={`flex items-center gap-3 w-full p-2 rounded-lg text-sm transition-all cursor-pointer ${viewMode === 'loadtest' ? 'bg-primary-500/10 text-primary-400' : 'hover:bg-dark-800 text-dark-400'}`}
+        >
+          <Zap className="w-4 h-4" />
+          Performance
+        </button>
+        <button 
+          onClick={() => setViewMode('history')}
+          className={`flex items-center gap-3 w-full p-2 rounded-lg text-sm transition-all cursor-pointer ${viewMode === 'history' ? 'bg-primary-500/10 text-primary-400' : 'hover:bg-dark-800 text-dark-400'}`}
+        >
           <History className="w-4 h-4" />
           History
         </button>
