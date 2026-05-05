@@ -210,7 +210,7 @@ const RequestBuilder = ({ handleSend }) => {
       {/* Request Tabs */}
       <div className="glass-card flex-1 flex flex-col overflow-hidden">
          <div className="flex border-b border-dark-800 p-1 gap-1">
-            {['params', 'headers', 'body', 'auth', 'assertions', 'examples'].map((tab) => (
+            {['params', 'headers', 'body', 'auth', 'scripts', 'assertions', 'examples'].map((tab) => (
               <button
                 key={tab}
                 className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${
@@ -449,6 +449,51 @@ const RequestBuilder = ({ handleSend }) => {
                       <p className="text-xs">Nhấn "SAVE LOG" ở bảng Response để lưu lại kết quả.</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+            {activeTab === 'scripts' && (
+              <div className="space-y-6 animate-fade-in flex flex-col h-full overflow-y-auto custom-scrollbar pr-2">
+                <div className="flex items-center justify-between mb-2">
+                   <div className="flex items-center gap-3">
+                    <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">Request Scripts</span>
+                   </div>
+                </div>
+
+                <div className="flex-1 flex flex-col gap-8 pb-10">
+                   <div className="flex flex-col min-h-[200px]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 bg-yellow-500/10 rounded-lg">
+                          <Plus className="w-3.5 h-3.5 text-yellow-500" />
+                        </div>
+                        <span className="text-xs font-bold text-dark-300">Pre-request Script</span>
+                        <span className="text-[9px] text-dark-600 font-medium ml-auto italic">Runs before sending request</span>
+                      </div>
+                      <textarea 
+                        className="w-full bg-dark-800/30 border border-dark-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-yellow-500/30 text-xs font-mono transition-all text-dark-200 custom-scrollbar resize-y min-h-[200px]"
+                        style={{ height: '300px' }}
+                        placeholder="// Pre-request Script: Tạo Signature&#10;const timestamp = Math.floor(Date.now() / 1000).toString();&#10;const signature = CryptoJS.HmacSHA256(timestamp + omni.env.get('clientId'), omni.env.get('clientSecret')).toString();&#10;omni.env.set('X-Timestamp', timestamp);&#10;omni.env.set('X-Signature', signature);"
+                        value={activeRequest.preScript || ''}
+                        onChange={(e) => setActiveRequest({ preScript: e.target.value })}
+                      ></textarea>
+                   </div>
+
+                   <div className="flex flex-col min-h-[200px]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 bg-green-500/10 rounded-lg">
+                          <Plus className="w-3.5 h-3.5 text-green-500" />
+                        </div>
+                        <span className="text-xs font-bold text-dark-300">Post-response Script (Tests)</span>
+                        <span className="text-[9px] text-dark-600 font-medium ml-auto italic">Runs after receiving response</span>
+                      </div>
+                      <textarea 
+                        className="w-full bg-dark-800/30 border border-dark-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-green-500/30 text-xs font-mono transition-all text-dark-200 custom-scrollbar resize-y min-h-[200px]"
+                        style={{ height: '300px' }}
+                        placeholder="// Post-response Script: Lưu Token&#10;const res = omni.response.json();&#10;if (res.status === 'success') {&#10;    omni.env.set('ref-user-id', res.data.core_user_id);&#10;}"
+                        value={activeRequest.postScript || ''}
+                        onChange={(e) => setActiveRequest({ postScript: e.target.value })}
+                      ></textarea>
+                   </div>
                 </div>
               </div>
             )}

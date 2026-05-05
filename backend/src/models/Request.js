@@ -47,21 +47,36 @@ const Request = sequelize.define('Request', {
     allowNull: true,
     comment: 'Request body (chỉ dùng cho POST/PUT/PATCH)'
   },
-  auth_config: {
+  authConfig: {
     type: DataTypes.JSON,
     allowNull: true,
+    field: 'auth_config',
     comment: 'Cấu hình Auth Automator: { type, loginUrl, loginBody, tokenPath }'
   },
   assertions: {
     type: DataTypes.JSON,
     allowNull: true,
+    field: 'assertions',
     comment: 'Danh sách assertion rules: [{ type, op, expected }]'
+  },
+  preScript: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'pre_script',
+    comment: 'Javascript chạy trước khi gửi request'
+  },
+  postScript: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'post_script',
+    comment: 'Javascript chạy sau khi nhận kết quả'
   }
 }, {
   tableName: 'requests',
   comment: 'Lưu từng API request đã cấu hình',
   timestamps: true,
-  underscored: true
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Request;

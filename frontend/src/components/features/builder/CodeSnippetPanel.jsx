@@ -3,10 +3,22 @@ import { Copy, Check, ChevronDown, Code2 } from 'lucide-react';
 import useStore from '../../../store/useStore';
 
 const CodeSnippetPanel = ({ onClose }) => {
-  const { activeRequest } = useStore();
+  const { activeRequest, activeEnvironment } = useStore();
   const [selectedLang, setSelectedLang] = useState('curl');
   const [copied, setCopied] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
+
+  const resolveVariables = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    if (!activeEnvironment || !activeEnvironment.variables) return text;
+    
+    let resolvedText = text;
+    Object.entries(activeEnvironment.variables).forEach(([key, value]) => {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      resolvedText = resolvedText.replace(regex, value);
+    });
+    return resolvedText;
+  };
 
   const languages = [
     { id: 'curl', name: 'cURL' },
@@ -16,24 +28,15 @@ const CodeSnippetPanel = ({ onClose }) => {
   ];
 
   const generateSnippet = () => {
-    if (!activeRequest) return '';
-
     const { method, url, headers, body, params } = activeRequest;
     
-    // Build full URL with params
-    let fullUrl = url || 'https://api.example.com';
-    if (params && params.length > 0) {
-      const query = params
-        .filter(p => p.enabled && p.key)
-        .map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
-        .join('&');
-      if (query) {
-        fullUrl += (fullUrl.includes('?') ? '&' : '?') + query;
-      }
-    }
-
+    // Resolve variables in base parts
+    // URL already contains params due to sync logic in useStore.js
+    const fullUrl = resolveVariables(url || 'https://api.example.com');
+    const resolvedBody = resolveVariables(body);
+    
     const enabledHeaders = headers?.filter(h => h.enabled && h.key) || [];
-    const hasJsonBody = body && method !== 'GET';
+    const hasJsonBody = resolvedBody && method !== 'GET';
     
     // Ensure Content-Type is present if there is a body
     let finalHeaders = [...enabledHeaders];
@@ -41,28 +44,34 @@ const CodeSnippetPanel = ({ onClose }) => {
       finalHeaders.push({ key: 'Content-Type', value: 'application/json' });
     }
 
+    // Resolve variables in headers
+    const resolvedHeaders = finalHeaders.map(h => ({
+      key: resolveVariables(h.key),
+      value: resolveVariables(h.value)
+    }));
+
     switch (selectedLang) {
       case 'curl':
         let curl = `curl --location '${fullUrl}' \\\n--request ${method}`;
-        finalHeaders.forEach(h => {
+        resolvedHeaders.forEach(h => {
           curl += ` \\\n--header '${h.key}: ${h.value}'`;
         });
         if (hasJsonBody) {
           // Use --data-raw for better Postman compatibility
-          curl += ` \\\n--data-raw '${body.replace(/'/g, "'\\''")}'`;
+          curl += ` \\\n--data-raw '${resolvedBody.replace(/'/g, "'\\''")}'`;
         }
         return curl;
 
       case 'fetch':
         let fetchCode = `fetch("${fullUrl}", {\n  method: "${method}",\n`;
         fetchCode += `  headers: {\n`;
-        finalHeaders.forEach((h, i) => {
-          fetchCode += `    "${h.key}": "${h.value}"${i === finalHeaders.length - 1 ? '' : ','}\n`;
+        resolvedHeaders.forEach((h, i) => {
+          fetchCode += `    "${h.key}": "${h.value}"${i === resolvedHeaders.length - 1 ? '' : ','}\n`;
         });
         fetchCode += `  }${hasJsonBody ? ',' : ''}\n`;
         
         if (hasJsonBody) {
-          fetchCode += `  body: JSON.stringify(${body})\n`;
+          fetchCode += `  body: JSON.stringify(${resolvedBody})\n`;
         }
         fetchCode += `})\n.then(response => response.json())\n.then(result => console.log(result))\n.catch(error => console.log('error', error));`;
         return fetchCode;
@@ -70,13 +79,13 @@ const CodeSnippetPanel = ({ onClose }) => {
       case 'axios':
         let axiosCode = `const axios = require('axios');\n\nlet config = {\n  method: '${method.toLowerCase()}',\n  url: '${fullUrl}',\n`;
         axiosCode += `  headers: {\n`;
-        finalHeaders.forEach((h, i) => {
-          axiosCode += `    '${h.key}': '${h.value}'${i === finalHeaders.length - 1 ? '' : ','}\n`;
+        resolvedHeaders.forEach((h, i) => {
+          axiosCode += `    '${h.key}': '${h.value}'${i === resolvedHeaders.length - 1 ? '' : ','}\n`;
         });
         axiosCode += `  }${hasJsonBody ? ',' : ''}\n`;
         
         if (hasJsonBody) {
-          axiosCode += `  data: ${body}\n`;
+          axiosCode += `  data: ${resolvedBody}\n`;
         }
         axiosCode += `};\n\naxios(config)\n.then(function (response) {\n  console.log(JSON.stringify(response.data));\n})\n.catch(function (error) {\n  console.log(error);\n});`;
         return axiosCode;
@@ -84,14 +93,14 @@ const CodeSnippetPanel = ({ onClose }) => {
       case 'python':
         let pyCode = `import requests\nimport json\n\nurl = "${fullUrl}"\n\n`;
         if (hasJsonBody) {
-          pyCode += `payload = json.dumps(${body})\n`;
+          pyCode += `payload = json.dumps(${resolvedBody})\n`;
         } else {
           pyCode += `payload = {}\n`;
         }
         
         pyCode += `headers = {\n`;
-        finalHeaders.forEach((h, i) => {
-          pyCode += `  '${h.key}': '${h.value}'${i === finalHeaders.length - 1 ? '' : ','}\n`;
+        resolvedHeaders.forEach((h, i) => {
+          pyCode += `  '${h.key}': '${h.value}'${i === resolvedHeaders.length - 1 ? '' : ','}\n`;
         });
         pyCode += `}\n\nresponse = requests.request("${method}", url, headers=headers, data=payload)\n\nprint(response.text)`;
         return pyCode;

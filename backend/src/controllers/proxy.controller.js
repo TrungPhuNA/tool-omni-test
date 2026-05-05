@@ -3,7 +3,7 @@ const proxyService = require('../services/proxy.service');
 class ProxyController {
     async execute(req, res, next) {
         try {
-            const { method, url, headers, body, params, authConfig, variables, requestId } = req.body;
+            const { method, url, headers, body, params, authConfig, variables, requestId, preScript, postScript } = req.body;
 
             const result = await proxyService.executeRequest({
                 method,
@@ -13,7 +13,9 @@ class ProxyController {
                 params,
                 authConfig,
                 variables,
-                requestId
+                requestId,
+                preScript,
+                postScript
             });
 
             res.status(200).json({

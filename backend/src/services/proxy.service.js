@@ -1,12 +1,21 @@
 const axios = require('axios');
 const authAutomator = require('./auth_automator.service');
 const historyRepository = require('../repositories/history.repository');
+const vm = require('vm');
 
 class ProxyService {
   async executeRequest(config) {
-    let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {}, requestId = null } = config;
+    let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {}, requestId = null, preScript = '', postScript = '' } = config;
     
-    // 0. Inject biến môi trường vào URL, Headers, Body, Params
+    // 0. Chạy Pre-request Script
+    if (preScript) {
+      variables = this.runScript(preScript, { 
+        request: { method, url, headers, body, params },
+        variables 
+      });
+    }
+
+    // 1. Inject biến môi trường vào URL, Headers, Body, Params
     url = this.injectVariables(url, variables);
     
     // Inject vào headers
@@ -80,7 +89,16 @@ class ProxyService {
       };
     }
 
-    // 2. Lưu lịch sử (Background - không chặn response trả về cho user)
+    // 2. Chạy Post-response Script
+    if (postScript) {
+      variables = this.runScript(postScript, {
+        request: { method, url, headers, body, params },
+        response: result,
+        variables
+      });
+    }
+
+    // 3. Lưu lịch sử (Background - không chặn response trả về cho user)
     // Dùng repository thay vì gọi model trực tiếp ở đây
     historyRepository.create({
       request_id: requestId,
@@ -92,7 +110,53 @@ class ProxyService {
       assert_result: null
     }).catch(err => console.error('Lỗi lưu lịch sử:', err));
 
-    return result;
+    return { ...result, variables };
+  }
+
+  // Chạy script trong sandbox
+  runScript(script, context) {
+    const CryptoJS = require('crypto-js');
+    const vars = { ...context.variables };
+    const omni = {
+      env: {
+        set: (key, value) => { vars[key] = value; },
+        get: (key) => vars[key]
+      },
+      environment: {
+        set: (key, value) => { vars[key] = value; },
+        get: (key) => vars[key]
+      },
+      request: context.request,
+      response: context.response ? {
+        ...context.response,
+        json: () => {
+          try {
+            return typeof context.response.body === 'string' 
+              ? JSON.parse(context.response.body) 
+              : context.response.body;
+          } catch (e) {
+            return null;
+          }
+        }
+      } : null,
+      log: console.log
+    };
+
+    const sandbox = {
+      omni: omni,
+      pm: omni, // Alias giống Postman
+      CryptoJS: CryptoJS, // Tích hợp thư viện crypto
+      console: console
+    };
+
+    try {
+      vm.createContext(sandbox);
+      vm.runInContext(script, sandbox, { timeout: 1000 });
+    } catch (err) {
+      console.error('Script execution error:', err.message);
+    }
+
+    return vars;
   }
 
   // Inject biến môi trường vào string

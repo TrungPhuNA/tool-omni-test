@@ -1,9 +1,8 @@
 const { Op } = require('sequelize');
+const { Collection, Folder, Request, RequestExample, Scenario, CollectionShare } = require('../models');
 
 class CollectionRepository {
   async getAll(userId, userEmail) {
-    const models = require('../models');
-    const { Collection, Folder, Request, RequestExample, Scenario, CollectionShare } = models;
 
     // Find collections shared with this user's email
     let sharedCollectionIds = [];
@@ -24,7 +23,7 @@ class CollectionRepository {
       ];
     }
 
-    return await Collection.findAll({
+    const results = await Collection.findAll({
       where: whereClause,
       include: [
         { 
@@ -50,12 +49,11 @@ class CollectionRepository {
       ],
       order: [['created_at', 'DESC']]
     });
+
+    return results;
   }
 
   async getById(id) {
-    const models = require('../models');
-    const { Collection, Folder, Request, RequestExample, Scenario, CollectionShare } = models;
-
     return await Collection.findByPk(id, {
       include: [
         { 
@@ -83,19 +81,16 @@ class CollectionRepository {
   }
 
   async create(data) {
-    const { Collection } = require('../models');
     return await Collection.create(data);
   }
 
   async update(id, data) {
-    const { Collection } = require('../models');
     const collection = await Collection.findByPk(id);
     if (!collection) return null;
     return await collection.update(data);
   }
 
   async delete(id) {
-    const { Collection } = require('../models');
     const collection = await Collection.findByPk(id);
     if (!collection) return false;
     await collection.destroy();

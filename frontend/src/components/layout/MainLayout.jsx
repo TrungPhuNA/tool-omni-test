@@ -99,7 +99,9 @@ const MainLayout = () => {
             headers: requestData.headers,
             params: [],
             body: requestData.body,
-            authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+            authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
+            preScript: '',
+            postScript: ''
         });
         navigate('/');
     };
@@ -175,7 +177,9 @@ const MainLayout = () => {
             headers: Array.isArray(headers) ? headers : [],
             params: Array.isArray(params) ? params : [],
             body: body,
-            authConfig: req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+            authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
+            preScript: req.preScript || req.pre_script || '',
+            postScript: req.postScript || req.post_script || ''
         });
         navigate('/');
     };

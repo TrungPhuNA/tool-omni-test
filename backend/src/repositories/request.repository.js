@@ -17,9 +17,10 @@ class RequestRepository {
   }
 
   async update(id, data) {
-    const request = await Request.findByPk(id);
-    if (!request) return null;
-    return await request.update(data);
+    await Request.update(data, {
+      where: { id }
+    });
+    return await Request.findByPk(id);
   }
 
   async delete(id) {

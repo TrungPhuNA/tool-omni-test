@@ -23,7 +23,9 @@ const useStore = create((set, get) => ({
       loginUrl: '',
       loginBody: '',
       tokenPath: 'data.token'
-    }
+    },
+    preScript: '',
+    postScript: ''
   },
   response: null,
   isLoading: false,
@@ -82,7 +84,9 @@ const useStore = create((set, get) => ({
       headers: [],
       body: '',
       params: [],
-      authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+      authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
+      preScript: '',
+      postScript: ''
     };
 
     const newTab = {
@@ -122,12 +126,48 @@ const useStore = create((set, get) => ({
     }
   },
 
-  setActiveRequest: (request) => {
+  setActiveRequest: (requestUpdate) => {
     const { activeTabId, tabs, activeRequest } = get();
-    const updatedRequest = { ...activeRequest, ...request };
+    let updatedRequest = { ...activeRequest, ...requestUpdate };
     
+    // 1. Nếu URL thay đổi, đồng bộ sang Params
+    if (requestUpdate.url !== undefined) {
+      const url = requestUpdate.url;
+      if (url.includes('?')) {
+        const [baseUrl, queryString] = url.split('?');
+        const searchParams = new URLSearchParams(queryString);
+        const newParams = [];
+        searchParams.forEach((value, key) => {
+          newParams.push({ key, value, description: '', enabled: true });
+        });
+        // Giữ lại một dòng trống cuối cùng
+        newParams.push({ key: '', value: '', description: '', enabled: true });
+        updatedRequest.params = newParams;
+      } else {
+        // Nếu xóa sạch dấu ?, xóa bảng params (giữ lại 1 dòng trống)
+        if (activeRequest.url.includes('?') && !url.includes('?')) {
+           updatedRequest.params = [{ key: '', value: '', description: '', enabled: true }];
+        }
+      }
+    } 
+    // 2. Nếu Params thay đổi, đồng bộ ngược lại URL
+    else if (requestUpdate.params !== undefined) {
+      const params = requestUpdate.params.filter(p => p.enabled && p.key);
+      const urlParts = activeRequest.url.split('?');
+      const baseUrl = urlParts[0];
+      
+      if (params.length > 0) {
+        const queryString = params
+          .map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
+          .join('&');
+        updatedRequest.url = `${baseUrl}?${queryString}`;
+      } else {
+        updatedRequest.url = baseUrl;
+      }
+    }
+
     const newTabs = tabs.map(t => 
-      t.id === activeTabId ? { ...t, request: updatedRequest, name: request.name || t.name } : t
+      t.id === activeTabId ? { ...t, request: updatedRequest, name: requestUpdate.name || t.name } : t
     );
 
     set({ 
@@ -153,7 +193,36 @@ const useStore = create((set, get) => ({
       const res = await axios.get(`${API_URL}/collections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      set({ collections: res.data.data });
+      
+      const mappedCollections = res.data.data.map(col => ({
+        ...col,
+        requests: (col.requests || []).map(req => {
+          const mapped = {
+            ...req,
+            preScript: req.preScript || req.pre_script || '',
+            postScript: req.postScript || req.post_script || '',
+            authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+          };
+          return mapped;
+        }),
+        folders: (col.folders || []).map(folder => ({
+          ...folder,
+          requests: (folder.requests || []).map(req => {
+            const mapped = {
+              ...req,
+              preScript: req.preScript || req.pre_script || '',
+              postScript: req.postScript || req.post_script || '',
+              authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+            };
+            return mapped;
+          })
+        }))
+      }));
+
+      set({ 
+        collections: mappedCollections,
+        isLoading: false 
+      });
     } catch (err) {
       console.error('Failed to fetch collections', err);
     }
@@ -256,6 +325,8 @@ const useStore = create((set, get) => ({
         collection_id: collectionId,
         folder_id: folderId || requestData.folder_id || null
       };
+      
+      console.log('Sending save request payload:', payload);
 
       if (requestData.id) {
         res = await axios.put(`${API_URL}/requests/${requestData.id}`, payload, {
@@ -266,11 +337,30 @@ const useStore = create((set, get) => ({
           headers: { 'Authorization': `Bearer ${token}` }
         });
       }
-      // Refresh collections to get updated request list
+
+      const updatedRequest = {
+        ...res.data.data,
+        preScript: res.data.data.preScript || res.data.data.pre_script || '',
+        postScript: res.data.data.postScript || res.data.data.post_script || '',
+        authConfig: res.data.data.authConfig || res.data.data.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+      };
+
+      // Sync tabs and activeRequest
+      const { activeTabId, tabs } = get();
+      const newTabs = tabs.map(t => 
+        t.id === activeTabId ? { ...t, request: updatedRequest } : t
+      );
+
+      set({ 
+        activeRequest: updatedRequest,
+        tabs: newTabs
+      });
+
       await get().fetchCollections();
-      return res.data.data;
+      return updatedRequest;
     } catch (err) {
       console.error('Failed to save request', err);
+      throw err;
     }
   },
 
@@ -331,7 +421,9 @@ const useStore = create((set, get) => ({
         headers: sourceReq.headers,
         params: sourceReq.params,
         body: sourceReq.body,
-        auth_config: sourceReq.auth_config
+        authConfig: sourceReq.authConfig,
+        preScript: sourceReq.preScript,
+        postScript: sourceReq.postScript
       };
 
       await axios.post(`${API_URL}/requests`, payload, {
@@ -564,21 +656,43 @@ const useStore = create((set, get) => ({
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
       const variables = activeEnvironment?.variables || {};
+      
+      // Tách baseUrl để tránh lặp params khi axios tự append paramsObj
+      const baseUrl = activeRequest.url.split('?')[0];
 
       const res = await axios.post(`${API_URL}/proxy/execute`, {
         method: activeRequest.method,
-        url: activeRequest.url,
+        url: baseUrl,
         headers: headersObj,
         params: paramsObj,
         body: activeRequest.body ? JSON.parse(activeRequest.body) : undefined,
         variables: variables,
-        authConfig: activeRequest.authConfig
+        authConfig: activeRequest.authConfig,
+        preScript: activeRequest.preScript,
+        postScript: activeRequest.postScript
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      setResponse(res.data.data);
-      return { success: true, data: res.data.data };
+      const result = res.data.data;
+      setResponse(result);
+
+      // Nếu script có cập nhật biến môi trường
+      if (result.variables && activeEnvironment) {
+        const updatedEnv = {
+          ...activeEnvironment,
+          variables: { ...activeEnvironment.variables, ...result.variables }
+        };
+        set({ 
+          activeEnvironment: updatedEnv,
+          environments: get().environments.map(e => e.id === updatedEnv.id ? updatedEnv : e)
+        });
+        
+        // Lưu vào DB để persist
+        await get().saveEnvironment(updatedEnv);
+      }
+
+      return { success: true, data: result };
     } catch (error) {
       const errorRes = {
         statusCode: 500,

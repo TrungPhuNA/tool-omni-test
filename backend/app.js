@@ -1,4 +1,5 @@
 require('dotenv').config();
+// Trigger restart to refresh models mapping
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
