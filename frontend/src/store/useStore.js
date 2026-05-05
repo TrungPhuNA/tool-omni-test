@@ -72,6 +72,19 @@ const useStore = create((set, get) => ({
     }
   },
 
+  deleteHistory: async (id) => {
+    const { token } = get();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    try {
+      await axios.delete(`${API_URL}/history/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchHistory();
+    } catch (err) {
+      console.error('Failed to delete history', err);
+    }
+  },
+
   createCollection: async (name) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     const token = get().token;

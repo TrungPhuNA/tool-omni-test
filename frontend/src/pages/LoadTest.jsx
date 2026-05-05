@@ -1,69 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, Settings, Activity, Clock, Users, Zap } from 'lucide-react';
+import { Play, Square, Activity, Clock, Users, Globe, Zap, BarChart3, AlertCircle, Terminal, X, HelpCircle, ChevronRight, Info } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { io } from 'socket.io-client';
 import useStore from '../store/useStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const LoadTest = () => {
   const { 
-    collections, 
-    token, 
-    environments, 
+    activeRequest, 
     activeEnvironment, 
-    setActiveEnvironment 
+    environments, 
+    collections,
+    fetchEnvironments, 
+    setActiveEnvironment,
+    setActiveRequest,
+    token 
   } = useStore();
   
-  const [selectedReq, setSelectedReq] = useState(null);
-  const [config, setConfig] = useState({ vus: 10, duration: '30s' });
+  const [targetVus, setTargetVus] = useState(10);
+  const [duration, setDuration] = useState('30s');
   const [isRunning, setIsRunning] = useState(false);
-  const [metrics, setMetrics] = useState([]);
   const [testId, setTestId] = useState(null);
-  const [resolvedUrl, setResolvedUrl] = useState('');
-  const [logs, setLogs] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [logs, setLogs] = useState([]);
+  const [metrics, setMetrics] = useState([]);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [notification, setNotification] = useState(null);
+
   const socketRef = useRef(null);
   const logEndRef = useRef(null);
   const progressInterval = useRef(null);
-
-  // Auto scroll logs
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
-  // Helper function to resolve variables and handle relative URLs
-  const resolveVariables = (str, isUrl = false) => {
-    if (!str || typeof str !== 'string') return str;
-    
-    let resolved = str;
-    const vars = activeEnvironment?.variables || {};
-    
-    Object.entries(vars).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      resolved = resolved.replace(regex, value);
-    });
-
-    if (isUrl && !resolved.startsWith('http')) {
-      const baseUrlVar = vars['url'] || vars['base_url'] || Object.values(vars).find(v => typeof v === 'string' && v.startsWith('http'));
-      
-      if (baseUrlVar) {
-        const baseUrl = baseUrlVar.endsWith('/') ? baseUrlVar.slice(0, -1) : baseUrlVar;
-        const path = resolved.startsWith('/') ? resolved : `/${resolved}`;
-        resolved = `${baseUrl}${path}`;
-      }
-    }
-    
-    return resolved;
-  };
+  const currentTestIdRef = useRef(null);
 
   useEffect(() => {
-    if (selectedReq) {
-      setResolvedUrl(resolveVariables(selectedReq.url, true));
-    } else {
-      setResolvedUrl('');
-    }
-  }, [selectedReq, activeEnvironment]);
-
-  useEffect(() => {
+    fetchEnvironments();
     const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:5005';
     const socketUrl = rawUrl.replace(/\/api\/v1\/?$/, '');
     
@@ -72,345 +42,349 @@ const LoadTest = () => {
       withCredentials: true
     });
 
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected to:', socketUrl);
-    });
+    socketRef.current.on('connect', () => console.log('Socket Connected'));
 
+    // Lắng nghe k6:progress (Log và Metrics từ Terminal)
     socketRef.current.on('k6:progress', (data) => {
-      setLogs(prev => [...prev, data.output]);
+      if (data.testId === currentTestIdRef.current) {
+        setLogs(prev => [...prev, data.output].slice(-200));
 
-      const vusMatch = data.output.match(/(\d+)\/\d+ VUs/) || data.output.match(/(\d+)\s+looping VUs/);
-      const currentVUs = vusMatch ? parseInt(vusMatch[1]) : 0;
-      
-      if (vusMatch) {
-        setMetrics(prev => {
-          const newPoint = { 
-            time: new Date().toLocaleTimeString(), 
-            vus: currentVUs 
-          };
-          return [...prev, newPoint].slice(-50);
-        });
+        // Phân tích VUs từ dòng output (Regex)
+        const vusMatch = data.output.match(/(\d+)\/\d+ VUs/) || data.output.match(/(\d+)\s+looping VUs/);
+        if (vusMatch) {
+          const vusCount = parseInt(vusMatch[1]);
+          setMetrics(prev => [...prev, {
+            time: new Date().toLocaleTimeString(),
+            vus: vusCount
+          }].slice(-60));
+        }
       }
     });
 
     socketRef.current.on('k6:error', (data) => {
-      setLogs(prev => [...prev, `[ERROR] ${data.message}`]);
-      clearInterval(progressInterval.current);
-      setIsRunning(false);
+      if (data.testId === currentTestIdRef.current) {
+        setLogs(prev => [...prev, `[LỖI] ${data.message}`]);
+        setIsRunning(false);
+        clearInterval(progressInterval.current);
+        showNotify(data.message, 'error');
+      }
     });
 
-    socketRef.current.on('k6:done', () => {
-      setLogs(prev => [...prev, '[SYSTEM] Test completed. Check History for full report.']);
-      setProgress(100);
-      clearInterval(progressInterval.current);
-      setIsRunning(false);
-      setTestId(null);
+    socketRef.current.on('k6:done', (data) => {
+      if (data.testId === currentTestIdRef.current) {
+        setIsRunning(false);
+        setProgress(100);
+        clearInterval(progressInterval.current);
+        setLogs(prev => [...prev, '--- KIỂM THỬ HOÀN TẤT ---']);
+        showNotify('Kiểm thử hoàn tất!', 'success');
+      }
     });
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
-      clearInterval(progressInterval.current);
+      if (progressInterval.current) clearInterval(progressInterval.current);
     };
   }, []);
 
-  const handleStart = async () => {
-    if (!selectedReq) return;
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  const showNotify = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const startTest = async () => {
+    if (!activeRequest?.id) {
+      showNotify('Vui lòng chọn một Request trước!', 'warning');
+      return;
+    }
+
     setIsRunning(true);
+    setLogs(['[HỆ THỐNG] Đang chuẩn bị kịch bản test...']);
     setMetrics([]);
-    setLogs(['[SYSTEM] Initializing k6 engine with Stages & Thresholds...']);
     setProgress(0);
-
-    const finalUrl = resolveVariables(selectedReq.url, true);
-    const rawHeaders = typeof selectedReq.headers === 'string' ? JSON.parse(selectedReq.headers) : selectedReq.headers;
-    const resolvedHeaders = Array.isArray(rawHeaders) ? rawHeaders.reduce((acc, h) => {
-      if (h.enabled && h.key) {
-        acc[h.key] = resolveVariables(h.value);
-      }
-      return acc;
-    }, {}) : {};
-
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     
-    // Calculate total duration for progress bar
-    const durSec = parseInt(config.duration) || 10;
-    const totalDuration = durSec + 4; // Including ramp up/down
-    let elapsed = 0;
+    const durSec = parseInt(duration) || 10;
+    const totalDuration = (durSec + 4) * 1000;
+    let startTime = Date.now();
 
     try {
-      const res = await fetch(`${API_URL}/loadtest/start`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1'}/loadtest/start`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          method: selectedReq.method,
-          url: finalUrl,
-          headers: resolvedHeaders,
-          body: resolveVariables(selectedReq.body),
-          vus: parseInt(config.vus),
-          duration: `${durSec}s`,
-          requestId: selectedReq.id
+          requestId: activeRequest.id,
+          method: activeRequest.method,
+          url: getResolvedUrl(),
+          headers: activeRequest.headers,
+          body: activeRequest.body,
+          vus: parseInt(targetVus),
+          duration: `${durSec}s`
         })
       });
-      const data = await res.json();
+      
+      const data = await response.json();
       if (data.status === 'success') {
-        setTestId(data.data.testId);
+        const newTestId = data.data.testId;
+        setTestId(newTestId);
+        currentTestIdRef.current = newTestId;
         
-        // Start progress simulation
+        if (progressInterval.current) clearInterval(progressInterval.current);
         progressInterval.current = setInterval(() => {
-          elapsed += 0.5;
-          const p = Math.min((elapsed / totalDuration) * 100, 99);
+          const elapsed = Date.now() - startTime;
+          const p = Math.min(Math.round((elapsed / totalDuration) * 100), 99);
           setProgress(p);
-        }, 500);
-
+        }, 300);
       } else {
-        setIsRunning(false);
-        setLogs(prev => [...prev, `[ERROR] ${data.message || 'Failed to start test'}`]);
+        throw new Error(data.message);
       }
     } catch (error) {
-      console.error('Failed to start load test', error);
       setIsRunning(false);
-      setLogs(prev => [...prev, `[ERROR] ${error.message}`]);
+      setLogs(prev => [...prev, `[LỖI] ${error.message}`]);
+      showNotify(error.message, 'error');
     }
   };
 
-  const handleStop = async () => {
-    if (!testId) return;
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+  const stopTest = async () => {
     try {
-      await fetch(`${API_URL}/loadtest/stop`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1'}/loadtest/stop`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify({ testId })
+        body: JSON.stringify({ testId: currentTestIdRef.current })
       });
       setIsRunning(false);
+      setShowStopConfirm(false);
       clearInterval(progressInterval.current);
-      setLogs(prev => [...prev, '[SYSTEM] Stop signal sent.']);
+      setLogs(prev => [...prev, '--- ĐÃ DỪNG KIỂM THỬ ---']);
+      showNotify('Đã dừng k6.', 'info');
     } catch (error) {
-      console.error('Failed to stop load test', error);
+      console.error('Stop error:', error);
     }
   };
 
+  const getResolvedUrl = () => {
+    if (!activeRequest?.url) return 'Chưa có URL';
+    let url = activeRequest.url;
+    if (activeEnvironment?.variables) {
+      Object.entries(activeEnvironment.variables).forEach(([key, value]) => {
+        url = url.replace(`{{${key}}}`, value);
+      });
+    }
+    return url;
+  };
+
   return (
-    <div className="flex-1 overflow-auto bg-dark-950 p-6">
-      <header className="flex items-center justify-between mb-8">
+    <div className="flex-1 flex flex-col bg-dark-950 p-6 space-y-6 overflow-hidden relative">
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            className={`fixed left-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
+              notification.type === 'error' ? 'bg-red-500/20 border-red-500 text-red-500' :
+              notification.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-500' :
+              'bg-primary-500/20 border-primary-500 text-primary-400'
+            }`}
+          >
+            {notification.type === 'error' ? <AlertCircle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
+            <span className="text-sm font-bold">{notification.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-dark-50 font-sans">Load Testing</h2>
-          <p className="text-sm text-dark-400 font-sans mt-1">Kiểm tra khả năng chịu tải của API với k6 engine.</p>
+          <h2 className="text-xl font-bold text-primary-400 font-sans">Kiểm thử Hiệu năng (Load Testing)</h2>
+          <p className="text-xs text-dark-500 font-sans">Kiểm tra khả năng chịu tải của API với engine k6 chuyên nghiệp.</p>
         </div>
-        <button 
-          onClick={isRunning ? handleStop : handleStart}
-          className={`px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg ${isRunning ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-primary-500 hover:bg-primary-600 text-white shadow-primary-500/20 cursor-pointer'}`}
+        <button
+          onClick={() => isRunning ? setShowStopConfirm(true) : startTest()}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${
+            isRunning 
+              ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20' 
+              : 'bg-primary-500 hover:bg-primary-600 text-dark-950 shadow-primary-500/20'
+          }`}
         >
-          {isRunning ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-          <span>{isRunning ? 'Stop Test' : 'Run Performance Test'}</span>
+          {isRunning ? (
+            <><Square className="w-4 h-4 fill-current" /> Dừng Test</>
+          ) : (
+            <><Play className="w-4 h-4 fill-current" /> Bắt đầu Kiểm thử</>
+          )}
         </button>
       </header>
 
-      <div className="grid grid-cols-12 gap-6 pb-12">
-        {/* Config Panel */}
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="bg-dark-900/50 border border-dark-800 rounded-2xl p-6 space-y-4">
-            <h3 className="text-sm font-bold text-dark-200 flex items-center gap-2">
-              <Settings className="w-4 h-4 text-primary-500" />
-              Test Configuration
-            </h3>
+      <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800/50 space-y-6">
+            <div className="flex items-center gap-2 text-primary-400 border-b border-dark-800 pb-4">
+              <Zap className="w-5 h-5" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Cấu hình Test</h3>
+            </div>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-dark-500 font-bold mb-2">Môi trường (Environment)</label>
-                <select 
-                  className="w-full bg-dark-800 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-dark-100 focus:outline-none focus:border-primary-500/50 transition-colors cursor-pointer"
-                  onChange={(e) => {
-                    const env = environments.find(env => env.id == e.target.value);
-                    setActiveEnvironment(env || null);
-                  }}
-                  value={activeEnvironment?.id || ''}
-                >
-                  <option value="">-- No Environment --</option>
-                  {environments.map(env => (
-                    <option key={env.id} value={env.id}>{env.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Môi trường</label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
+                  <select 
+                    className="w-full bg-dark-950 border border-dark-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500 appearance-none cursor-pointer"
+                    value={activeEnvironment?.id || ''}
+                    onChange={(e) => {
+                      const env = environments.find(ev => ev.id == e.target.value);
+                      setActiveEnvironment(env || null);
+                    }}
+                  >
+                    <option value="">Mặc định (Local)</option>
+                    {environments.map(env => (
+                      <option key={env.id} value={env.id}>{env.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-dark-500 font-bold mb-2">Chọn Request</label>
-                <select 
-                  className="w-full bg-dark-800 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-dark-100 focus:outline-none focus:border-primary-500/50 transition-colors cursor-pointer"
-                  onChange={(e) => {
-                    const [colId, reqId] = e.target.value.split(':');
-                    const col = collections.find(c => c.id == colId);
-                    const req = col?.requests?.find(r => r.id == reqId);
-                    setSelectedReq(req);
-                  }}
-                >
-                  <option value="">-- Chọn một API --</option>
-                  {collections.map(col => (
-                    <optgroup key={col.id} label={col.name}>
-                      {col.requests?.map(req => (
-                        <option key={req.id} value={`${col.id}:${req.id}`}>{req.method} {req.name}</option>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Request đang chọn</label>
+                <div className="relative">
+                   <select 
+                      className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500 appearance-none cursor-pointer"
+                      value={activeRequest?.id || ''}
+                      onChange={(e) => {
+                        for (const col of collections) {
+                          const req = col.requests?.find(r => r.id == e.target.value);
+                          if (req) { setActiveRequest(req); break; }
+                        }
+                      }}
+                   >
+                      <option value="">-- Chọn API --</option>
+                      {collections.map(col => (
+                        <optgroup key={col.id} label={col.name} className="bg-dark-900">
+                          {col.requests?.map(req => (
+                            <option key={req.id} value={req.id}>{req.method} - {req.name}</option>
+                          ))}
+                        </optgroup>
                       ))}
-                    </optgroup>
-                  ))}
-                </select>
+                   </select>
+                   <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-600 pointer-events-none" />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-dark-500 font-bold mb-2 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> Target VUs
-                  </label>
-                  <input 
-                    type="number" 
-                    className="w-full bg-dark-800 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-dark-100 focus:outline-none focus:border-primary-500/50 transition-colors" 
-                    value={config.vus}
-                    onChange={(e) => setConfig({...config, vus: e.target.value})}
-                  />
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Số VUs</label>
+                  <input type="number" value={targetVus} onChange={(e) => setTargetVus(e.target.value)} disabled={isRunning} className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500" />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[10px] uppercase tracking-wider text-dark-500 font-bold mb-2 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" /> Duration
-                  </label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-dark-800 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-dark-100 focus:outline-none focus:border-primary-500/50 transition-colors" 
-                    placeholder="30s, 1m..."
-                    value={config.duration}
-                    onChange={(e) => setConfig({...config, duration: e.target.value})}
-                  />
+                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Thời gian (s)</label>
+                  <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={isRunning} className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500" />
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="bg-dark-900/50 border border-dark-800 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-dark-200 flex items-center gap-2 mb-4">
-              <Zap className="w-4 h-4 text-yellow-500" />
-              Quick Stats
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-dark-800/50 rounded-xl border border-dark-700">
-                <p className="text-[10px] uppercase font-bold text-dark-500">Target URL (Resolved)</p>
-                <p className="text-xs font-mono text-dark-200 truncate mt-1" title={resolvedUrl}>{resolvedUrl || 'N/A'}</p>
+          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800/50 space-y-4">
+            <div className="flex items-center gap-2 text-primary-400">
+              <BarChart3 className="w-5 h-5" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Thông số</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="bg-dark-950 p-3 rounded-xl border border-dark-800">
+                <p className="text-[9px] font-bold text-dark-500 uppercase mb-1">Target URL</p>
+                <p className="text-[10px] font-mono text-dark-300 break-all">{getResolvedUrl()}</p>
               </div>
-              <div className="p-3 bg-dark-800/50 rounded-xl border border-dark-700">
-                <p className="text-[10px] uppercase font-bold text-dark-500">Method</p>
-                <p className="text-xs font-bold text-primary-400 mt-1">{selectedReq?.method || 'N/A'}</p>
+              <div className="bg-dark-950 p-3 rounded-xl border border-dark-800">
+                <p className="text-[9px] font-bold text-dark-500 uppercase mb-1">Phương thức</p>
+                <span className="text-xs font-bold text-primary-400">{activeRequest?.method || 'GET'}</span>
               </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Chart and Logs Panel */}
-        <div className="col-span-12 lg:col-span-8 space-y-6">
-          <div className="bg-dark-900/50 border border-dark-800 rounded-3xl p-8 flex flex-col relative">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-sm font-bold text-dark-200 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-green-500" />
-                Real-time Performance Metrics
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
+          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800 flex flex-col min-h-[350px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-bold text-primary-400 uppercase flex items-center gap-2">
+                <Activity className="w-5 h-5" /> Biểu đồ thời gian thực
               </h3>
-              {isRunning && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold uppercase animate-pulse">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                  Running
-                </div>
-              )}
+              {isRunning && <div className="text-[10px] font-bold text-green-500 animate-pulse">ĐANG CHẠY</div>}
             </div>
-            
-            {/* Progress Bar UI */}
-            {isRunning && (
+
+            {(isRunning || progress > 0) && (
               <div className="mb-6 space-y-2">
-                <div className="flex items-center justify-between text-[10px] font-bold text-dark-400 uppercase tracking-widest">
-                  <span>Overall Test Progress</span>
-                  <span>{Math.round(progress)}%</span>
+                <div className="flex justify-between text-[10px] font-bold text-dark-500 uppercase">
+                  <span>Tiến độ tổng thể</span>
+                  <span>{progress}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-dark-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary-500 transition-all duration-500 shadow-[0_0_10px_rgba(14,165,233,0.5)]"
-                    style={{ width: `${progress}%` }}
-                  ></div>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-primary-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
                 </div>
               </div>
             )}
 
-            <div style={{ height: '350px', width: '100%', position: 'relative' }}>
+            <div className="flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={metrics}>
                   <defs>
                     <linearGradient id="colorVus" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#475569" 
-                    fontSize={10} 
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="#475569" 
-                    fontSize={10} 
-                    tickLine={false}
-                    axisLine={false}
-                    label={{ value: 'VUs', angle: -90, position: 'insideLeft', style: { fill: '#475569', fontSize: 10 } }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '12px' }}
-                    itemStyle={{ color: '#0ea5e9' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="vus" 
-                    stroke="#0ea5e9" 
-                    strokeWidth={3} 
-                    fillOpacity={1} 
-                    fill="url(#colorVus)"
-                    animationDuration={300}
-                  />
+                  <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }} />
+                  <Area type="monotone" dataKey="vus" name="Người dùng (VUs)" stroke="#3b82f6" fillOpacity={1} fill="url(#colorVus)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
-
-              {!isRunning && metrics.length === 0 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-900/40 backdrop-blur-[1px] text-dark-500 gap-3">
-                   <Activity className="w-12 h-12 opacity-20" />
-                   <p className="text-sm font-medium">No active test session. Click "Run" to start monitoring.</p>
-                </div>
-              )}
             </div>
-          </div>
+          </section>
 
-          {/* Terminal Logs */}
-          <div className="bg-black/80 border border-dark-800 rounded-2xl p-4 font-mono text-[11px] h-64 flex flex-col">
-            <div className="flex items-center justify-between mb-2 text-dark-500 pb-2 border-b border-dark-800">
-              <span className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
-                </div>
-                k6 Output Stream
-              </span>
-              <button onClick={() => setLogs([])} className="hover:text-dark-300 transition-colors">Clear</button>
-            </div>
-            <div className="flex-1 overflow-auto space-y-1 custom-scrollbar">
+          <section className="bg-dark-900/50 rounded-2xl border border-dark-800 flex flex-col flex-1 min-h-[200px] overflow-hidden">
+            <header className="px-6 py-3 border-b border-dark-800 flex items-center justify-between bg-dark-950/50">
+              <div className="flex items-center gap-2 text-dark-400">
+                <Terminal className="w-4 h-4" />
+                <h3 className="text-xs font-bold uppercase tracking-wider">K6 Output Stream</h3>
+              </div>
+              <button onClick={() => setLogs([])} className="text-[10px] font-bold text-dark-500 hover:text-dark-300 transition-all uppercase">Xóa Log</button>
+            </header>
+            <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto bg-black/20 custom-scrollbar">
               {logs.map((log, i) => (
-                <div key={i} className={`whitespace-pre-wrap ${log.includes('[ERROR]') ? 'text-red-400' : log.includes('[SYSTEM]') ? 'text-primary-400' : 'text-dark-300'}`}>
+                <div key={i} className={`py-0.5 border-l border-dark-800 pl-3 ml-1 ${log.includes('[LỖI]') ? 'text-red-400' : log.includes('[HỆ THỐNG]') ? 'text-primary-400' : 'text-dark-400'}`}>
+                  <span className="text-dark-600 mr-2">[{new Date().toLocaleTimeString()}]</span>
                   {log}
                 </div>
               ))}
               <div ref={logEndRef} />
+              {logs.length === 0 && <div className="h-full flex items-center justify-center text-dark-600 italic text-[10px]">Đang đợi dữ liệu từ k6...</div>}
             </div>
-          </div>
+          </section>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStopConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-dark-900 border border-dark-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><HelpCircle className="w-8 h-8" /></div>
+              <h3 className="text-xl font-bold text-dark-50 mb-2">Dừng Kiểm thử?</h3>
+              <p className="text-sm text-dark-400 mb-8">Bạn có chắc muốn dừng k6 ngay lập tức?</p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowStopConfirm(false)} className="flex-1 py-3 bg-dark-800 hover:bg-dark-700 text-dark-200 rounded-xl font-bold">Tiếp tục</button>
+                <button onClick={stopTest} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold">Dừng ngay</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

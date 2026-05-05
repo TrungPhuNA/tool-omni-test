@@ -11,23 +11,31 @@ class K6Service {
     generateScript(config) {
         let { method, url, headers, body, vus, duration } = config;
 
-        const safeHeaders = (headers && typeof headers === 'object' && !Array.isArray(headers)) 
-            ? headers 
+        const safeHeaders = (headers && typeof headers === 'object' && !Array.isArray(headers))
+            ? headers
             : {};
 
         // Chuyển duration sang giây để tính toán stages
         const durSec = parseInt(duration) || 10;
-        
+
         const script = `
 import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 
 export const options = {
-  stages: [
-    { duration: '2s', target: ${vus || 1} },
-    { duration: '${durSec}s', target: ${vus || 1} },
-    { duration: '2s', target: 0 },
-  ],
+  scenarios: {
+    default: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '2s', target: ${vus || 1} },
+        { duration: '${durSec}s', target: ${vus || 1} },
+        { duration: '2s', target: 0 },
+      ],
+      gracefulRampDown: '1s',
+      gracefulStop: '1s',
+    },
+  },
   thresholds: {
     'http_req_failed': ['rate<0.01'],
     'http_req_duration': ['p(95)<2000'],
@@ -36,6 +44,7 @@ export const options = {
 
 export default function () {
   group('API_Request_Execution', function () {
+    console.log(\`[VU \${__VU}] Sending ${method} request...\`);
     const res = http.request('${method}', '${url}', '${body || ''}', {
       headers: ${JSON.stringify(safeHeaders)},
       timeout: '10s'
@@ -58,7 +67,7 @@ export default function () {
     runTest(testId, scriptPath, io, requestId = null) {
         // Quay lại dùng k6 run trực tiếp để tránh lỗi socket trên macOS
         const k6Process = spawn('k6', ['run', scriptPath]);
-        
+
         this.activeProcesses.set(testId, k6Process);
 
         let fullOutput = '';
@@ -85,10 +94,10 @@ export default function () {
 
         k6Process.on('close', async (code) => {
             console.log(`k6 process [${testId}] closed with code ${code}`);
-            
+
             // Phân tích kết quả cơ bản từ log để lưu history
             const summary = this.parseSummary(fullOutput);
-            
+
             try {
                 await TestHistory.create({
                     request_id: requestId,
