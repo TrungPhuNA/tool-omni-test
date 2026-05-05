@@ -54,6 +54,38 @@ const MainLayout = () => {
         setConfirmData({ ...data, isOpen: true });
     };
 
+    const [sidebarWidth, setSidebarWidth] = useState(288); // Default width 288px (w-72)
+    const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+    const startResizingSidebar = (e) => {
+        setIsResizingSidebar(true);
+        e.preventDefault();
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isResizingSidebar) return;
+            const newWidth = e.clientX;
+            if (newWidth > 150 && newWidth < 600) {
+                setSidebarWidth(newWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsResizingSidebar(false);
+        };
+
+        if (isResizingSidebar) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizingSidebar]);
+
     const handleImportCurl = (requestData) => {
         setActiveRequest({
             id: null,
@@ -186,7 +218,15 @@ const MainLayout = () => {
                 setIsEnvModalOpen={setIsEnvModalOpen}
                 openConfirm={openConfirm}
                 showToast={showToast}
+                style={{ width: `${sidebarWidth}px` }}
             />
+
+            <div 
+                className={`w-1 hover:w-1.5 transition-all cursor-col-resize bg-dark-800 hover:bg-primary-500/50 flex-shrink-0 relative z-50 ${isResizingSidebar ? 'w-1.5 bg-primary-500/50' : ''}`}
+                onMouseDown={startResizingSidebar}
+            >
+                <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
+            </div>
 
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Outlet context={{ showToast }} />

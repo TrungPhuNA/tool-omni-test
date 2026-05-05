@@ -33,7 +33,8 @@ const Sidebar = ({
   setIsImportModalOpen,
   setIsEnvModalOpen,
   openConfirm,
-  showToast
+  showToast,
+  style
 }) => {
   const navigate = useNavigate();
   const { user, logout, collections, createFolder, deleteFolder, moveRequest, deleteRequest, duplicateRequest, deleteCollection } = useStore();
@@ -117,7 +118,10 @@ const Sidebar = ({
   };
 
   return (
-    <aside className="w-72 border-r border-dark-800 flex flex-col bg-dark-900/30 backdrop-blur-sm">
+    <aside 
+      className="border-r border-dark-800 flex flex-col bg-dark-900/30 backdrop-blur-sm flex-shrink-0"
+      style={style}
+    >
       <div className="p-4 border-b border-dark-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900/20">

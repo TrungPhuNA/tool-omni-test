@@ -1,6 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Plus, Trash2, ShieldCheck } from 'lucide-react';
 import useStore from '../../../store/useStore';
+
+const BodyEditor = ({ body, onChange }) => {
+  const [height, setHeight] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
+
+  const startResizing = (e) => {
+    setIsResizing(true);
+    startY.current = e.clientY;
+    startHeight.current = height;
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      const delta = e.clientY - startY.current;
+      const newHeight = startHeight.current + delta;
+      if (newHeight > 100 && newHeight < 800) {
+        setHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'row-resize';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+    };
+  }, [isResizing]);
+
+  return (
+    <div id="body-editor-container" className="flex flex-col relative">
+      <div className="flex items-center gap-4 mb-3">
+         <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">JSON Body</span>
+         <div className="flex gap-2">
+            <span className="px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 text-[10px] font-bold uppercase">JSON</span>
+         </div>
+      </div>
+      <textarea 
+        className="w-full bg-dark-800/50 border border-dark-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-primary-500/30 text-sm font-mono transition-all resize-none text-dark-200 custom-scrollbar"
+        style={{ height: `${height}px` }}
+        placeholder='{ "key": "value" }'
+        value={body}
+        onChange={(e) => onChange(e.target.value)}
+      ></textarea>
+      
+      <div 
+        className={`group h-2 cursor-row-resize flex items-center justify-center relative z-10 mt-2`}
+        onMouseDown={startResizing}
+      >
+        <div className={`w-12 h-1 rounded-full transition-all ${isResizing ? 'bg-primary-500 w-24' : 'bg-dark-700 group-hover:bg-primary-500/50 group-hover:w-16'}`} />
+        <div className="absolute inset-x-0 -top-2 -bottom-2 cursor-row-resize" />
+      </div>
+    </div>
+  );
+};
 
 const RequestBuilder = ({ handleSend }) => {
   const { 
@@ -153,22 +220,7 @@ const RequestBuilder = ({ handleSend }) => {
               </div>
             )}
 
-            {activeTab === 'body' && (
-              <div className="h-full flex flex-col">
-                <div className="flex items-center gap-4 mb-3">
-                   <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">JSON Body</span>
-                   <div className="flex gap-2">
-                      <span className="px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 text-[10px] font-bold uppercase">JSON</span>
-                   </div>
-                </div>
-                <textarea 
-                  className="flex-1 w-full bg-dark-800/50 border border-dark-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-primary-500/30 text-sm font-mono transition-all resize-none text-dark-200"
-                  placeholder='{ "key": "value" }'
-                  value={activeRequest.body}
-                  onChange={(e) => setActiveRequest({ body: e.target.value })}
-                ></textarea>
-              </div>
-            )}
+            {activeTab === 'body' && <BodyEditor body={activeRequest.body} onChange={(val) => setActiveRequest({ body: val })} />}
 
             {activeTab === 'auth' && (
               <div className="space-y-6 animate-fade-in">
