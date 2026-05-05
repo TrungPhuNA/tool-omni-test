@@ -8,6 +8,7 @@ const Scenario = require('./Scenario');
 const DataDrivenTest = require('./DataDrivenTest');
 const RequestExample = require('./RequestExample');
 const User = require('./User');
+const CollectionShare = require('./CollectionShare');
 
 // Associations
 Collection.hasMany(Folder, { foreignKey: 'collection_id', as: 'folders' });
@@ -28,6 +29,12 @@ RequestExample.belongsTo(Request, { foreignKey: 'request_id', as: 'request' });
 Collection.hasMany(Scenario, { foreignKey: 'collection_id', as: 'scenarios' });
 Scenario.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });
 
+Collection.hasMany(CollectionShare, { foreignKey: 'collection_id', as: 'shares' });
+CollectionShare.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });
+
+User.hasMany(CollectionShare, { foreignKey: 'user_id', as: 'createdShares' });
+CollectionShare.belongsTo(User, { foreignKey: 'user_id', as: 'sharer' });
+
 Request.hasMany(DataDrivenTest, { foreignKey: 'request_id', as: 'dataDrivenTests' });
 DataDrivenTest.belongsTo(Request, { foreignKey: 'request_id', as: 'request' });
 
@@ -41,5 +48,6 @@ module.exports = {
   Scenario,
   DataDrivenTest,
   RequestExample,
-  User
+  User,
+  CollectionShare
 };

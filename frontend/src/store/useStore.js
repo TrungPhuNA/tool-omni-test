@@ -27,6 +27,14 @@ const useStore = create((set, get) => ({
   },
   response: null,
   isLoading: false,
+  toast: { message: '', type: 'success', visible: false },
+
+  showToast: (message, type = 'success') => {
+    set({ toast: { message, type, visible: true } });
+    setTimeout(() => {
+      set({ toast: { ...get().toast, visible: false } });
+    }, 3000);
+  },
 
   setAuth: (user, token) => {
     localStorage.setItem('user', JSON.stringify(user));

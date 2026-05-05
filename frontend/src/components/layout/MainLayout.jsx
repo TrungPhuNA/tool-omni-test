@@ -28,7 +28,9 @@ const MainLayout = () => {
         setActiveScenario,
         deleteRequest,
         deleteFolder,
-        addTab
+        addTab,
+        toast: globalToast,
+        showToast
     } = useStore();
 
     const [expandedCollections, setExpandedCollections] = useState({});
@@ -42,7 +44,6 @@ const MainLayout = () => {
     const [targetImportFolderId, setTargetImportFolderId] = useState(null);
     const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
     const [editingEnv, setEditingEnv] = useState(null);
-    const [toast, setToast] = useState(null);
     const [confirmData, setConfirmData] = useState({ 
         isOpen: false, 
         title: '', 
@@ -103,10 +104,6 @@ const MainLayout = () => {
         navigate('/');
     };
 
-    const showToast = (message, type = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
 
     useEffect(() => {
         fetchCollections();
@@ -196,7 +193,7 @@ const MainLayout = () => {
 
     return (
         <div className="flex h-screen bg-dark-950 overflow-hidden text-dark-100 selection:bg-primary-500/30">
-            <Toast toast={toast} />
+            <Toast toast={globalToast.visible ? globalToast : null} />
 
             <Sidebar
                 expandedCollections={expandedCollections}

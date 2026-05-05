@@ -9,6 +9,8 @@ import History from './pages/History';
 import LoadTest from './pages/LoadTest';
 import ScenarioPage from './pages/ScenarioPage';
 
+import PublicViewPage from './pages/PublicViewPage';
+
 function App() {
     const { token, logout } = useStore();
 
@@ -28,19 +30,23 @@ function App() {
         }
     }, [token, logout]);
 
-    if (!token) {
-        return <Login />;
-    }
-
     return (
         <Router>
             <Routes>
-                <Route element={<MainLayout />}>
+                {/* Public documentation route - No Auth */}
+                <Route path="/public/:token" element={<PublicViewPage />} />
+
+                {/* Login Route */}
+                <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
+
+                {/* Protected App Routes */}
+                <Route element={token ? <MainLayout /> : <Navigate to="/login" />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/performance" element={<LoadTest />} />
                     <Route path="/scenarios/:id" element={<ScenarioPage />} />
                 </Route>
+
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </Router>

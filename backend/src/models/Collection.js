@@ -17,6 +17,11 @@ const Collection = sequelize.define('Collection', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'Mô tả mục đích của collection'
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID của người dùng sở hữu collection này'
   }
 }, {
   tableName: 'collections',

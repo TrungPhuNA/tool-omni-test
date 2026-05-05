@@ -3,7 +3,9 @@ const collectionRepo = require('../repositories/collection.repository');
 class CollectionController {
     async getAll(req, res, next) {
         try {
-            const collections = await collectionRepo.getAll();
+            const userId = req.user.id;
+            const userEmail = req.user.email;
+            const collections = await collectionRepo.getAll(userId, userEmail);
             res.status(200).json({
                 status: 'success',
                 code: 'SUCCESS',
@@ -16,7 +18,8 @@ class CollectionController {
 
     async create(req, res, next) {
         try {
-            const collection = await collectionRepo.create(req.body);
+            const data = { ...req.body, user_id: req.user.id };
+            const collection = await collectionRepo.create(data);
             res.status(201).json({
                 status: 'success',
                 code: 'SUCCESS',

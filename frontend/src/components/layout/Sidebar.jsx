@@ -17,11 +17,13 @@ import {
   FileCode,
   Copy,
   FileJson,
-  FileText
+  FileText,
+  Share2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
 import ExportDocModal from '../features/builder/ExportDocModal';
+import ShareModal from '../features/builder/ShareModal';
 
 const Sidebar = ({ 
   expandedCollections, 
@@ -45,6 +47,7 @@ const Sidebar = ({
   const [expandedRequests, setExpandedRequests] = useState({});
   const [dragOverId, setDragOverId] = useState(null);
   const [exportModal, setExportModal] = useState({ isOpen: false, folder: null, requests: [] });
+  const [shareModal, setShareModal] = useState({ isOpen: false, collection: null });
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
@@ -167,6 +170,16 @@ const Sidebar = ({
                     <span className="text-sm font-medium text-dark-100">{col.name}</span>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShareModal({ isOpen: true, collection: col });
+                      }}
+                      className="p-1 hover:bg-dark-700 rounded text-dark-400 hover:text-primary-400"
+                      title="Chia sẻ Collection"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
                     <button 
                       onClick={(e) => handleCreateFolder(e, col.id)}
                       className="p-1 hover:bg-dark-700 rounded text-dark-400 hover:text-primary-400"
@@ -528,6 +541,12 @@ const Sidebar = ({
         onClose={() => setExportModal({ ...exportModal, isOpen: false })}
         folder={exportModal.folder || {}}
         requests={exportModal.requests}
+      />
+
+      <ShareModal
+        isOpen={shareModal.isOpen}
+        onClose={() => setShareModal({ ...shareModal, isOpen: false })}
+        collection={shareModal.collection}
       />
     </aside>
   );
