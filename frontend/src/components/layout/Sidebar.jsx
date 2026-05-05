@@ -12,6 +12,7 @@ import {
   Settings,
   Zap
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
 
 const Sidebar = ({ 
@@ -22,10 +23,10 @@ const Sidebar = ({
   activeRequest, 
   activeScenario, 
   viewMode,
-  setViewMode,
   setIsModalOpen,
   setIsEnvModalOpen
 }) => {
+  const navigate = useNavigate();
   const { user, logout, collections } = useStore();
 
   return (
@@ -124,14 +125,14 @@ const Sidebar = ({
           </button>
         </div>
         <button 
-          onClick={() => setViewMode('loadtest')}
+          onClick={() => navigate('/performance')}
           className={`flex items-center gap-3 w-full p-2 rounded-lg text-sm transition-all cursor-pointer ${viewMode === 'loadtest' ? 'bg-primary-500/10 text-primary-400' : 'hover:bg-dark-800 text-dark-400'}`}
         >
           <Zap className="w-4 h-4" />
           Performance
         </button>
         <button 
-          onClick={() => setViewMode('history')}
+          onClick={() => navigate('/history')}
           className={`flex items-center gap-3 w-full p-2 rounded-lg text-sm transition-all cursor-pointer ${viewMode === 'history' ? 'bg-primary-500/10 text-primary-400' : 'hover:bg-dark-800 text-dark-400'}`}
         >
           <History className="w-4 h-4" />

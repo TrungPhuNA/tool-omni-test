@@ -1,0 +1,5 @@
+temp_scripts/
+temp_outputs/
+node_modules/
+.env
+metrics.json

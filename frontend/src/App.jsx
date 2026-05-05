@@ -3,9 +3,14 @@ import axios from 'axios';
 import useStore from './store/useStore';
 import Login from './pages/Login';
 import Home from './pages/Home';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from './components/layout/MainLayout';
+import History from './pages/History';
+import LoadTest from './pages/LoadTest';
+import ScenarioPage from './pages/ScenarioPage';
 
 function App() {
-    const { token, logout, fetchCollections, fetchEnvironments } = useStore();
+    const { token, logout } = useStore();
 
     useEffect(() => {
         if (token) {
@@ -15,7 +20,6 @@ function App() {
                     await axios.get(`${API_URL}/auth/me`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    // Data fetching will be handled in Home.jsx or here
                 } catch (err) {
                     logout();
                 }
@@ -28,7 +32,19 @@ function App() {
         return <Login />;
     }
 
-    return <Home />;
+    return (
+        <Router>
+            <Routes>
+                <Route element={<MainLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/history" element={<History />} />
+                    <Route path="/performance" element={<LoadTest />} />
+                    <Route path="/scenarios/:id" element={<ScenarioPage />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </Router>
+    );
 }
 
 export default App;
