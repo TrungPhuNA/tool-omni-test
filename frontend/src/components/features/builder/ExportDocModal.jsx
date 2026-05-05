@@ -6,6 +6,7 @@ import { generateMarkdown, downloadMarkdown, exportToWord } from '../../../utils
 const ExportDocModal = ({ isOpen, onClose, folder, requests }) => {
   const [format, setFormat] = useState('md');
   const [includeSnapshots, setIncludeSnapshots] = useState(true);
+  const [customFileName, setCustomFileName] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen) return null;
@@ -20,10 +21,12 @@ const ExportDocModal = ({ isOpen, onClose, folder, requests }) => {
       const data = folderRequests;
       const markdown = generateMarkdown(folder.name, data);
 
+      const finalFileName = customFileName.trim() || folder.name;
+
       if (format === 'md') {
-        downloadMarkdown(folder.name, markdown);
+        downloadMarkdown(finalFileName, markdown);
       } else {
-        await exportToWord(folder.name, markdown);
+        await exportToWord(finalFileName, markdown);
       }
       
       setTimeout(() => {
@@ -86,6 +89,23 @@ const ExportDocModal = ({ isOpen, onClose, folder, requests }) => {
                   <span className="text-[10px] text-dark-600 font-medium">(.docx) - Chuyên nghiệp</span>
                 </div>
               </button>
+            </div>
+          </div>
+
+          {/* Filename Input */}
+          <div className="space-y-4">
+            <label className="text-xs font-black text-dark-500 uppercase tracking-widest ml-1">Tên tệp tin (Tùy chọn)</label>
+            <div className="relative group">
+              <input 
+                type="text" 
+                value={customFileName}
+                onChange={(e) => setCustomFileName(e.target.value)}
+                placeholder={folder.name}
+                className="w-full bg-dark-800/50 border border-dark-700 rounded-xl px-4 py-3 text-sm text-dark-100 outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50 transition-all shadow-inner"
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-dark-600 uppercase tracking-widest pointer-events-none">
+                .{format}
+              </div>
             </div>
           </div>
 

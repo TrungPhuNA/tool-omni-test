@@ -287,6 +287,16 @@ const Sidebar = ({
                                     <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        setExportModal({ isOpen: true, folder: { name: req.name }, requests: [req] });
+                                      }}
+                                      className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                                      title="Xuất tài liệu API"
+                                    >
+                                      <FileText className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         duplicateRequest(req.id);
                                       }}
                                       className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
@@ -377,6 +387,16 @@ const Sidebar = ({
                           </div>
 
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExportModal({ isOpen: true, folder: { name: req.name }, requests: [req] });
+                              }}
+                              className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                              title="Xuất tài liệu API"
+                            >
+                              <FileText className="w-3 h-3" />
+                            </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
