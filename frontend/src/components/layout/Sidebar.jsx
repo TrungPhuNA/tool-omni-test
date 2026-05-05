@@ -236,7 +236,7 @@ const Sidebar = ({
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const folderReqs = col.requests?.filter(r => r.folder_id === folder.id) || [];
+                                const folderReqs = folder.requests || [];
                                 setExportModal({ isOpen: true, folder, requests: folderReqs });
                               }}
                               className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 cursor-pointer"
@@ -273,7 +273,7 @@ const Sidebar = ({
                         
                         {expandedFolders[folder.id] && (
                           <div className="ml-5 border-l border-dark-800/30 pl-1 min-h-[10px]">
-                            {col.requests?.filter(r => r.folder_id === folder.id).map(req => (
+                            {folder.requests?.map(req => (
                               <div key={req.id}>
                                 <div 
                                   draggable
@@ -367,7 +367,7 @@ const Sidebar = ({
                                 ))}
                               </div>
                             ))}
-                            {(!col.requests?.filter(r => r.folder_id === folder.id).length) && (
+                            {(!folder.requests?.length) && (
                               <div className="p-1.5 text-[10px] text-dark-600 italic ml-2">Thư mục trống</div>
                             )}
                           </div>
