@@ -20,8 +20,10 @@ const LoadTest = () => {
   const [testId, setTestId] = useState(null);
   const [resolvedUrl, setResolvedUrl] = useState('');
   const [logs, setLogs] = useState([]);
+  const [progress, setProgress] = useState(0);
   const socketRef = useRef(null);
   const logEndRef = useRef(null);
+  const progressInterval = useRef(null);
 
   // Auto scroll logs
   useEffect(() => {
@@ -75,7 +77,6 @@ const LoadTest = () => {
     });
 
     socketRef.current.on('k6:progress', (data) => {
-      // Add to logs
       setLogs(prev => [...prev, data.output]);
 
       const vusMatch = data.output.match(/(\d+)\/\d+ VUs/) || data.output.match(/(\d+)\s+looping VUs/);
@@ -94,18 +95,21 @@ const LoadTest = () => {
 
     socketRef.current.on('k6:error', (data) => {
       setLogs(prev => [...prev, `[ERROR] ${data.message}`]);
-      alert(data.message);
+      clearInterval(progressInterval.current);
       setIsRunning(false);
     });
 
     socketRef.current.on('k6:done', () => {
-      setLogs(prev => [...prev, '[SYSTEM] Test completed.']);
+      setLogs(prev => [...prev, '[SYSTEM] Test completed. Check History for full report.']);
+      setProgress(100);
+      clearInterval(progressInterval.current);
       setIsRunning(false);
       setTestId(null);
     });
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
+      clearInterval(progressInterval.current);
     };
   }, []);
 
@@ -113,7 +117,8 @@ const LoadTest = () => {
     if (!selectedReq) return;
     setIsRunning(true);
     setMetrics([]);
-    setLogs(['[SYSTEM] Starting k6 load test...']);
+    setLogs(['[SYSTEM] Initializing k6 engine with Stages & Thresholds...']);
+    setProgress(0);
 
     const finalUrl = resolveVariables(selectedReq.url, true);
     const rawHeaders = typeof selectedReq.headers === 'string' ? JSON.parse(selectedReq.headers) : selectedReq.headers;
@@ -125,6 +130,12 @@ const LoadTest = () => {
     }, {}) : {};
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    
+    // Calculate total duration for progress bar
+    const durSec = parseInt(config.duration) || 10;
+    const totalDuration = durSec + 4; // Including ramp up/down
+    let elapsed = 0;
+
     try {
       const res = await fetch(`${API_URL}/loadtest/start`, {
         method: 'POST',
@@ -138,12 +149,21 @@ const LoadTest = () => {
           headers: resolvedHeaders,
           body: resolveVariables(selectedReq.body),
           vus: parseInt(config.vus),
-          duration: config.duration.endsWith('s') ? config.duration : `${config.duration}s`
+          duration: `${durSec}s`,
+          requestId: selectedReq.id
         })
       });
       const data = await res.json();
       if (data.status === 'success') {
         setTestId(data.data.testId);
+        
+        // Start progress simulation
+        progressInterval.current = setInterval(() => {
+          elapsed += 0.5;
+          const p = Math.min((elapsed / totalDuration) * 100, 99);
+          setProgress(p);
+        }, 500);
+
       } else {
         setIsRunning(false);
         setLogs(prev => [...prev, `[ERROR] ${data.message || 'Failed to start test'}`]);
@@ -168,6 +188,7 @@ const LoadTest = () => {
         body: JSON.stringify({ testId })
       });
       setIsRunning(false);
+      clearInterval(progressInterval.current);
       setLogs(prev => [...prev, '[SYSTEM] Stop signal sent.']);
     } catch (error) {
       console.error('Failed to stop load test', error);
@@ -242,7 +263,7 @@ const LoadTest = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-[10px] uppercase tracking-wider text-dark-500 font-bold mb-2 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> VUs
+                    <Users className="w-3.5 h-3.5" /> Target VUs
                   </label>
                   <input 
                     type="number" 
@@ -301,6 +322,22 @@ const LoadTest = () => {
               )}
             </div>
             
+            {/* Progress Bar UI */}
+            {isRunning && (
+              <div className="mb-6 space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-bold text-dark-400 uppercase tracking-widest">
+                  <span>Overall Test Progress</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-dark-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary-500 transition-all duration-500 shadow-[0_0_10px_rgba(14,165,233,0.5)]"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
             <div style={{ height: '350px', width: '100%', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={metrics}>
@@ -377,4 +414,5 @@ const LoadTest = () => {
     </div>
   );
 };
+
 export default LoadTest;

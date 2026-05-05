@@ -13,7 +13,7 @@ exports.start = async (req, res) => {
     const testId = `lt_${Date.now()}`;
     const scriptPath = k6Service.generateScript({ method, url, headers, body, vus, duration });
     
-    k6Service.runTest(testId, scriptPath, io);
+    k6Service.runTest(testId, scriptPath, io, requestId);
 
     res.json({
       status: 'success',
