@@ -4,7 +4,9 @@ import Sidebar from './Sidebar';
 import Toast from '../common/Toast';
 import CollectionModal from '../features/collections/CollectionModal';
 import FolderModal from '../features/folders/FolderModal';
+import ImportCurlModal from '../features/folders/ImportCurlModal';
 import EnvironmentModal from '../features/environments/EnvironmentModal';
+import ConfirmModal from '../common/ConfirmModal';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
 const MainLayout = () => {
@@ -19,10 +21,13 @@ const MainLayout = () => {
         fetchEnvironments,
         saveEnvironment,
         deleteEnvironment,
+        createFolder,
         activeRequest,
         setActiveRequest,
         activeScenario,
-        setActiveScenario
+        setActiveScenario,
+        deleteRequest,
+        deleteFolder
     } = useStore();
 
     const [expandedCollections, setExpandedCollections] = useState({});
@@ -31,9 +36,39 @@ const MainLayout = () => {
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [targetColId, setTargetColId] = useState(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [targetImportColId, setTargetImportColId] = useState(null);
+    const [targetImportFolderId, setTargetImportFolderId] = useState(null);
     const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
     const [editingEnv, setEditingEnv] = useState(null);
     const [toast, setToast] = useState(null);
+    const [confirmData, setConfirmData] = useState({ 
+        isOpen: false, 
+        title: '', 
+        message: '', 
+        onConfirm: () => {}, 
+        type: 'danger' 
+    });
+
+    const openConfirm = (data) => {
+        setConfirmData({ ...data, isOpen: true });
+    };
+
+    const handleImportCurl = (requestData) => {
+        setActiveRequest({
+            id: null,
+            collection_id: targetImportColId,
+            folder_id: targetImportFolderId,
+            name: 'Imported Request',
+            method: requestData.method,
+            url: requestData.url,
+            headers: requestData.headers,
+            params: [],
+            body: requestData.body,
+            authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+        });
+        navigate('/');
+    };
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -143,7 +178,14 @@ const MainLayout = () => {
                     setTargetColId(colId);
                     setIsFolderModalOpen(true);
                 }}
+                setIsImportModalOpen={(colId, folderId = null) => {
+                    setTargetImportColId(colId);
+                    setTargetImportFolderId(folderId);
+                    setIsImportModalOpen(true);
+                }}
                 setIsEnvModalOpen={setIsEnvModalOpen}
+                openConfirm={openConfirm}
+                showToast={showToast}
             />
 
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -166,6 +208,12 @@ const MainLayout = () => {
                 handleCreateFolder={handleCreateFolder}
             />
 
+            <ImportCurlModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImportCurl}
+            />
+
             <EnvironmentModal
                 isOpen={isEnvModalOpen}
                 onClose={() => { setIsEnvModalOpen(false); setEditingEnv(null); }}
@@ -177,6 +225,15 @@ const MainLayout = () => {
                 handleAddEnvVariable={handleAddEnvVariable}
                 handleUpdateEnvVariable={handleUpdateEnvVariable}
                 handleRemoveEnvVariable={handleRemoveEnvVariable}
+            />
+
+            <ConfirmModal
+                isOpen={confirmData.isOpen}
+                onClose={() => setConfirmData(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmData.onConfirm}
+                title={confirmData.title}
+                message={confirmData.message}
+                type={confirmData.type}
             />
         </div>
     );

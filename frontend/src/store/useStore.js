@@ -100,6 +100,21 @@ const useStore = create((set, get) => ({
     }
   },
 
+  deleteCollection: async (id) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.delete(`${API_URL}/collections/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+      return true;
+    } catch (err) {
+      console.error('Failed to delete collection', err);
+      return false;
+    }
+  },
+
   createFolder: async (collectionId, name) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     const token = get().token;
@@ -155,6 +170,77 @@ const useStore = create((set, get) => ({
       return res.data.data;
     } catch (err) {
       console.error('Failed to save request', err);
+    }
+  },
+
+  moveRequest: async (requestId, targetCollectionId, targetFolderId = null) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.put(`${API_URL}/requests/${requestId}`, {
+        collection_id: targetCollectionId,
+        folder_id: targetFolderId
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+      return true;
+    } catch (err) {
+      console.error('Failed to move request', err);
+      return false;
+    }
+  },
+
+  deleteRequest: async (id) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.delete(`${API_URL}/requests/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+      return true;
+    } catch (err) {
+      console.error('Failed to delete request', err);
+      return false;
+    }
+  },
+
+  duplicateRequest: async (requestId) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      // 1. Tìm source request trong collections có sẵn
+      let sourceReq = null;
+      get().collections.forEach(col => {
+        // Tìm trong requests của collection
+        const foundInCol = col.requests?.find(r => r.id === requestId);
+        if (foundInCol) sourceReq = foundInCol;
+      });
+
+      if (!sourceReq) return;
+
+      // 2. Tạo request mới với dữ liệu tương tự
+      const payload = {
+        collection_id: sourceReq.collection_id,
+        folder_id: sourceReq.folder_id,
+        name: `${sourceReq.name} (Copy)`,
+        method: sourceReq.method,
+        url: sourceReq.url,
+        headers: sourceReq.headers,
+        params: sourceReq.params,
+        body: sourceReq.body,
+        auth_config: sourceReq.auth_config
+      };
+
+      await axios.post(`${API_URL}/requests`, payload, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      await get().fetchCollections();
+      return true;
+    } catch (err) {
+      console.error('Failed to duplicate request', err);
     }
   },
 

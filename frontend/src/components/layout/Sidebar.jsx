@@ -13,7 +13,9 @@ import {
   Settings,
   Zap,
   MoreVertical,
-  Trash2
+  Trash2,
+  FileCode,
+  Copy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
@@ -28,14 +30,46 @@ const Sidebar = ({
   viewMode,
   setIsModalOpen,
   setIsFolderModalOpen,
-  setIsEnvModalOpen
+  setIsImportModalOpen,
+  setIsEnvModalOpen,
+  openConfirm,
+  showToast
 }) => {
   const navigate = useNavigate();
-  const { user, logout, collections, createFolder, deleteFolder } = useStore();
+  const { user, logout, collections, createFolder, deleteFolder, moveRequest, deleteRequest, duplicateRequest, deleteCollection } = useStore();
   const [expandedFolders, setExpandedFolders] = useState({});
+  const [dragOverId, setDragOverId] = useState(null);
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleImportCurl = (e, collectionId, folderId = null) => {
+    e.stopPropagation();
+    setIsImportModalOpen(collectionId, folderId);
+  };
+
+  const handleDragStart = (e, requestId) => {
+    e.dataTransfer.setData('requestId', requestId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    setDragOverId(id);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = async (e, collectionId, folderId = null) => {
+    e.preventDefault();
+    setDragOverId(null);
+    const requestId = e.dataTransfer.getData('requestId');
+    if (requestId) {
+      await moveRequest(requestId, collectionId, folderId);
+    }
   };
 
   const handleCreateFolder = async (e, collectionId) => {
@@ -43,11 +77,43 @@ const Sidebar = ({
     setIsFolderModalOpen(collectionId);
   };
 
-  const handleDeleteFolder = async (e, folderId) => {
+  const handleDeleteCollection = (e, col) => {
     e.stopPropagation();
-    if (confirm('Bạn có chắc muốn xóa thư mục này? Các API bên trong sẽ được chuyển ra ngoài.')) {
-      await deleteFolder(folderId);
-    }
+    openConfirm({
+      title: 'Xóa Collection',
+      message: `Bạn có chắc muốn xóa Collection "${col.name}"? Mọi API và Thư mục bên trong sẽ bị xóa vĩnh viễn.`,
+      onConfirm: async () => {
+        const success = await deleteCollection(col.id);
+        if (success) showToast(`Đã xóa Collection "${col.name}"`);
+      },
+      type: 'danger'
+    });
+  };
+
+  const handleDeleteFolder = (e, folder) => {
+    e.stopPropagation();
+    openConfirm({
+      title: 'Xóa Thư mục',
+      message: `Bạn có chắc muốn xóa thư mục "${folder.name}"? Các API bên trong sẽ được chuyển ra ngoài.`,
+      onConfirm: async () => {
+        await deleteFolder(folder.id);
+        showToast(`Đã xóa thư mục "${folder.name}"`);
+      },
+      type: 'danger'
+    });
+  };
+
+  const handleDeleteRequest = (e, req) => {
+    e.stopPropagation();
+    openConfirm({
+      title: 'Xóa API',
+      message: `Bạn có chắc muốn xóa API "${req.name}"?`,
+      onConfirm: async () => {
+        const success = await deleteRequest(req.id);
+        if (success) showToast(`Đã xóa API "${req.name}"`);
+      },
+      type: 'danger'
+    });
   };
 
   return (
@@ -74,7 +140,12 @@ const Sidebar = ({
               <div key={col.id}>
                 <div 
                   onClick={() => toggleCollection(col.id)}
-                  className="group flex items-center gap-2 p-2 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all"
+                  onDragOver={(e) => handleDragOver(e, `col-${col.id}`)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, col.id)}
+                  className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${
+                    dragOverId === `col-${col.id}` ? 'bg-primary-500/20 border-primary-500/50 border shadow-lg scale-[1.02]' : 'hover:bg-dark-800/50'
+                  }`}
                 >
                   <div className="flex items-center gap-2 flex-1">
                     {expandedCollections[col.id] ? <ChevronDown className="w-4 h-4 text-dark-50" /> : <ChevronRight className="w-4 h-4 text-dark-500" />}
@@ -88,6 +159,20 @@ const Sidebar = ({
                       title="Thêm Folder"
                     >
                       <FolderPlus className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => handleImportCurl(e, col.id)}
+                      className="p-1 hover:bg-dark-700 rounded text-dark-400 hover:text-blue-500"
+                      title="Import từ cURL"
+                    >
+                      <FileCode className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDeleteCollection(e, col)}
+                      className="p-1 hover:bg-red-500/10 rounded text-dark-400 hover:text-red-500"
+                      title="Xóa Collection"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <button 
                       onClick={(e) => {
@@ -108,7 +193,12 @@ const Sidebar = ({
                       <div key={folder.id}>
                         <div 
                           onClick={() => toggleFolder(folder.id)}
-                          className="group flex items-center gap-2 p-1.5 hover:bg-dark-800/40 rounded-lg cursor-pointer transition-all ml-1"
+                          onDragOver={(e) => handleDragOver(e, `folder-${folder.id}`)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, col.id, folder.id)}
+                          className={`group flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-all ml-1 ${
+                            dragOverId === `folder-${folder.id}` ? 'bg-yellow-500/20 border-yellow-500/50 border shadow-lg scale-[1.02]' : 'hover:bg-dark-800/40'
+                          }`}
                         >
                           <div className="flex items-center gap-2 flex-1">
                             {expandedFolders[folder.id] ? <ChevronDown className="w-3.5 h-3.5 text-dark-400" /> : <ChevronRight className="w-3.5 h-3.5 text-dark-500" />}
@@ -116,6 +206,13 @@ const Sidebar = ({
                             <span className="text-xs font-medium text-dark-300">{folder.name}</span>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={(e) => handleImportCurl(e, col.id, folder.id)}
+                              className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-blue-500"
+                              title="Import từ cURL vào Folder"
+                            >
+                              <FileCode className="w-3 h-3" />
+                            </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -127,8 +224,9 @@ const Sidebar = ({
                               <Plus className="w-3 h-3" />
                             </button>
                             <button 
-                              onClick={(e) => handleDeleteFolder(e, folder.id)}
+                              onClick={(e) => handleDeleteFolder(e, folder)}
                               className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500"
+                              title="Xóa Thư mục"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -136,18 +234,39 @@ const Sidebar = ({
                         </div>
                         
                         {expandedFolders[folder.id] && (
-                          <div className="ml-5 border-l border-dark-800/30 pl-1">
+                          <div className="ml-5 border-l border-dark-800/30 pl-1 min-h-[10px]">
                             {col.requests?.filter(r => r.folder_id === folder.id).map(req => (
                               <div 
                                 key={req.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, req.id)}
                                 onClick={() => loadRequest(req)}
-                                className={`flex items-center gap-2 p-1.5 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
+                                className={`group flex items-center gap-2 p-1.5 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
                               >
                                 <span className={`text-[9px] font-bold w-7 ${
                                   req.method === 'GET' ? 'text-green-500' : 
                                   req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
                                 }`}>{req.method}</span>
-                                <span className="text-xs truncate text-dark-400">{req.name}</span>
+                                <span className="text-xs truncate text-dark-400 flex-1">{req.name}</span>
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      duplicateRequest(req.id);
+                                    }}
+                                    className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                                    title="Nhân bản API"
+                                  >
+                                    <Copy className="w-2.5 h-2.5" />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => handleDeleteRequest(e, req)}
+                                    className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
+                                    title="Xóa API"
+                                  >
+                                    <Trash2 className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                             {(!col.requests?.filter(r => r.folder_id === folder.id).length) && (
@@ -161,14 +280,35 @@ const Sidebar = ({
                     {col.requests?.filter(r => !r.folder_id).map((req) => (
                       <div 
                         key={req.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, req.id)}
                         onClick={() => loadRequest(req)}
-                        className={`flex items-center gap-2 p-2 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ml-1 ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
+                        className={`group flex items-center gap-2 p-2 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ml-1 ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
                       >
                         <span className={`text-[10px] font-bold w-8 ${
                           req.method === 'GET' ? 'text-green-500' : 
                           req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
                         }`}>{req.method}</span>
-                        <span className="text-sm truncate text-dark-300">{req.name}</span>
+                        <span className="text-sm truncate text-dark-300 flex-1">{req.name}</span>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              duplicateRequest(req.id);
+                            }}
+                            className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                            title="Nhân bản API"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteRequest(e, req)}
+                            className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
+                            title="Xóa API"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
 
