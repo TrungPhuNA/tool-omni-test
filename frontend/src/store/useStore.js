@@ -471,7 +471,7 @@ const useStore = create((set, get) => ({
   addHeader: () => {
     const { activeRequest, setActiveRequest } = get();
     setActiveRequest({
-      headers: [...activeRequest.headers, { key: '', value: '', enabled: true }]
+      headers: [...activeRequest.headers, { key: '', value: '', description: '', enabled: true }]
     });
   },
 
@@ -489,10 +489,26 @@ const useStore = create((set, get) => ({
     });
   },
 
+  bulkUpdateHeaders: (text) => {
+    const { setActiveRequest } = get();
+    const headers = text.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const [key, ...valueParts] = line.split(':');
+        return {
+          key: key.trim(),
+          value: valueParts.join(':').trim(),
+          description: '',
+          enabled: true
+        };
+      });
+    setActiveRequest({ headers: headers.length > 0 ? headers : [{ key: '', value: '', description: '', enabled: true }] });
+  },
+
   addParam: () => {
     const { activeRequest, setActiveRequest } = get();
     setActiveRequest({
-      params: [...activeRequest.params, { key: '', value: '', enabled: true }]
+      params: [...activeRequest.params, { key: '', value: '', description: '', enabled: true }]
     });
   },
 
@@ -508,6 +524,22 @@ const useStore = create((set, get) => ({
     setActiveRequest({
       params: activeRequest.params.filter((_, i) => i !== index)
     });
+  },
+
+  bulkUpdateParams: (text) => {
+    const { setActiveRequest } = get();
+    const params = text.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const [key, ...valueParts] = line.split(':');
+        return {
+          key: key.trim(),
+          value: valueParts.join(':').trim(),
+          description: '',
+          enabled: true
+        };
+      });
+    setActiveRequest({ params: params.length > 0 ? params : [{ key: '', value: '', description: '', enabled: true }] });
   },
 
   executeRequest: async () => {
