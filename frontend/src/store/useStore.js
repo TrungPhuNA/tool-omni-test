@@ -185,6 +185,50 @@ const useStore = create((set, get) => ({
       params: state.activeRequest.params.filter((_, i) => i !== index)
     }
   })),
+
+  executeRequest: async () => {
+    const { activeRequest, activeEnvironment, token, setResponse, setIsLoading } = get();
+    setIsLoading(true);
+    try {
+      const headersObj = activeRequest.headers
+        .filter(h => h.enabled && h.key)
+        .reduce((acc, h) => ({ ...acc, [h.key]: h.value }), {});
+
+      const paramsObj = activeRequest.params
+        .filter(p => p.enabled && p.key)
+        .reduce((acc, p) => ({ ...acc, [p.key]: p.value }), {});
+
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+      const variables = activeEnvironment?.variables || {};
+
+      const res = await axios.post(`${API_URL}/proxy/execute`, {
+        method: activeRequest.method,
+        url: activeRequest.url,
+        headers: headersObj,
+        params: paramsObj,
+        body: activeRequest.body ? JSON.parse(activeRequest.body) : undefined,
+        variables: variables,
+        authConfig: activeRequest.authConfig
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      setResponse(res.data.data);
+      return { success: true, data: res.data.data };
+    } catch (error) {
+      const errorRes = {
+        statusCode: 500,
+        statusText: 'Internal Error',
+        body: { error: error.message },
+        responseTime: 0,
+        headers: {}
+      };
+      setResponse(errorRes);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  }
 }));
 
 export default useStore;
