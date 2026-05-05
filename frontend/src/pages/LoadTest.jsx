@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, Activity, Clock, Users, Globe, Zap, BarChart3, AlertCircle, Terminal, X, HelpCircle, ChevronRight, Info } from 'lucide-react';
+import { Play, Square, Activity, Clock, Users, Globe, Zap, BarChart3, AlertCircle, Terminal, X, HelpCircle, ChevronRight, Info, Plus, Trash2, ArrowDown, GripVertical, Key } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { io } from 'socket.io-client';
 import useStore from '../store/useStore';
@@ -16,6 +16,11 @@ const LoadTest = () => {
     setActiveRequest,
     token 
   } = useStore();
+  
+  // Chế độ: single (1 API) hoặc scenario (Luồng)
+  const [testMode, setTestMode] = useState('single');
+  const [scenarioName, setScenarioName] = useState('');
+  const [scenarioSteps, setScenarioSteps] = useState([]);
   
   const [targetVus, setTargetVus] = useState(10);
   const [duration, setDuration] = useState('30s');
@@ -42,14 +47,9 @@ const LoadTest = () => {
       withCredentials: true
     });
 
-    socketRef.current.on('connect', () => console.log('Socket Connected'));
-
-    // Lắng nghe k6:progress (Log và Metrics từ Terminal)
     socketRef.current.on('k6:progress', (data) => {
       if (data.testId === currentTestIdRef.current) {
         setLogs(prev => [...prev, data.output].slice(-200));
-
-        // Phân tích VUs từ dòng output (Regex)
         const vusMatch = data.output.match(/(\d+)\/\d+ VUs/) || data.output.match(/(\d+)\s+looping VUs/);
         if (vusMatch) {
           const vusCount = parseInt(vusMatch[1]);
@@ -58,15 +58,6 @@ const LoadTest = () => {
             vus: vusCount
           }].slice(-60));
         }
-      }
-    });
-
-    socketRef.current.on('k6:error', (data) => {
-      if (data.testId === currentTestIdRef.current) {
-        setLogs(prev => [...prev, `[LỖI] ${data.message}`]);
-        setIsRunning(false);
-        clearInterval(progressInterval.current);
-        showNotify(data.message, 'error');
       }
     });
 
@@ -95,14 +86,69 @@ const LoadTest = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const addStep = () => {
+    setScenarioSteps([...scenarioSteps, { id: Date.now(), requestId: '', isLogin: false, tokenPath: 'data.token' }]);
+  };
+
+  const removeStep = (id) => {
+    setScenarioSteps(scenarioSteps.filter(s => s.id !== id));
+  };
+
+  const updateStep = (id, field, value) => {
+    setScenarioSteps(scenarioSteps.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
   const startTest = async () => {
-    if (!activeRequest?.id) {
-      showNotify('Vui lòng chọn một Request trước!', 'warning');
-      return;
+    let payload = {
+      vus: parseInt(targetVus),
+      duration: duration.includes('s') ? duration : `${duration}s`,
+    };
+
+    if (testMode === 'single') {
+      if (!activeRequest?.id) {
+        showNotify('Vui lòng chọn một Request trước!', 'warning');
+        return;
+      }
+      payload = {
+        ...payload,
+        requestId: activeRequest.id,
+        name: activeRequest.name,
+        method: activeRequest.method,
+        url: getResolvedUrl(activeRequest),
+        headers: activeRequest.headers,
+        body: activeRequest.body
+      };
+    } else {
+      if (scenarioSteps.length === 0) {
+        showNotify('Vui lòng thêm ít nhất một bước vào kịch bản!', 'warning');
+        return;
+      }
+      
+      const requests = scenarioSteps.map(step => {
+        let reqData = null;
+        for (const col of collections) {
+          const found = col.requests?.find(r => r.id == step.requestId);
+          if (found) { reqData = found; break; }
+        }
+        if (!reqData) return null;
+        return {
+          ...reqData,
+          url: getResolvedUrl(reqData),
+          isLogin: step.isLogin,
+          tokenPath: step.tokenPath
+        };
+      }).filter(r => r !== null);
+
+      if (requests.length === 0) {
+        showNotify('Vui lòng chọn API cho các bước!', 'warning');
+        return;
+      }
+      payload.requests = requests;
+      payload.scenarioName = scenarioName || 'Kịch bản không tên';
     }
 
     setIsRunning(true);
-    setLogs(['[HỆ THỐNG] Đang chuẩn bị kịch bản test...']);
+    setLogs([`[HỆ THỐNG] Đang chuẩn bị chạy chế độ: ${testMode === 'single' ? 'Đơn lẻ' : 'Kịch bản luồng'}...`]);
     setMetrics([]);
     setProgress(0);
     
@@ -117,15 +163,7 @@ const LoadTest = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          requestId: activeRequest.id,
-          method: activeRequest.method,
-          url: getResolvedUrl(),
-          headers: activeRequest.headers,
-          body: activeRequest.body,
-          vus: parseInt(targetVus),
-          duration: `${durSec}s`
-        })
+        body: JSON.stringify(payload)
       });
       
       const data = await response.json();
@@ -170,9 +208,9 @@ const LoadTest = () => {
     }
   };
 
-  const getResolvedUrl = () => {
-    if (!activeRequest?.url) return 'Chưa có URL';
-    let url = activeRequest.url;
+  const getResolvedUrl = (req) => {
+    if (!req?.url) return 'Chưa có URL';
+    let url = req.url;
     if (activeEnvironment?.variables) {
       Object.entries(activeEnvironment.variables).forEach(([key, value]) => {
         url = url.replace(`{{${key}}}`, value);
@@ -202,10 +240,28 @@ const LoadTest = () => {
       </AnimatePresence>
 
       <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-primary-400 font-sans">Kiểm thử Hiệu năng (Load Testing)</h2>
-          <p className="text-xs text-dark-500 font-sans">Kiểm tra khả năng chịu tải của API với engine k6 chuyên nghiệp.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-primary-400 font-sans">Kiểm thử Hiệu năng</h2>
+            <p className="text-xs text-dark-500 font-sans">Giả lập tải lớn bằng engine k6 chuyên nghiệp.</p>
+          </div>
+          
+          <div className="flex bg-dark-900 p-1 rounded-xl border border-dark-800 ml-4">
+            <button 
+              onClick={() => setTestMode('single')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${testMode === 'single' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-dark-500 hover:text-dark-300'}`}
+            >
+              API Đơn lẻ
+            </button>
+            <button 
+              onClick={() => setTestMode('scenario')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${testMode === 'scenario' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-dark-500 hover:text-dark-300'}`}
+            >
+              Kịch bản luồng
+            </button>
+          </div>
         </div>
+        
         <button
           onClick={() => isRunning ? setShowStopConfirm(true) : startTest()}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${
@@ -217,22 +273,37 @@ const LoadTest = () => {
           {isRunning ? (
             <><Square className="w-4 h-4 fill-current" /> Dừng Test</>
           ) : (
-            <><Play className="w-4 h-4 fill-current" /> Bắt đầu Kiểm thử</>
+            <><Play className="w-4 h-4 fill-current" /> Bắt đầu {testMode === 'single' ? 'Kiểm thử' : 'Chạy Luồng'}</>
           )}
         </button>
       </header>
 
       <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+        {/* Cấu hình bên trái */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+          
+          {/* Cài đặt CCU & Time */}
           <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800/50 space-y-6">
-            <div className="flex items-center gap-2 text-primary-400 border-b border-dark-800 pb-4">
-              <Zap className="w-5 h-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Cấu hình Test</h3>
+            <div className="flex items-center justify-between border-b border-dark-800 pb-4">
+              <div className="flex items-center gap-2 text-primary-400">
+                <Users className="w-5 h-5" />
+                <h3 className="text-sm font-bold uppercase tracking-wider">Cấu hình Tải</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-dark-500 uppercase">VUs:</span>
+                    <input type="number" value={targetVus} onChange={(e) => setTargetVus(e.target.value)} disabled={isRunning} className="w-16 bg-dark-950 border border-dark-800 rounded-lg px-2 py-1 text-xs text-primary-400 outline-none focus:border-primary-500" />
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-dark-500 uppercase">Time:</span>
+                    <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={isRunning} className="w-16 bg-dark-950 border border-dark-800 rounded-lg px-2 py-1 text-xs text-primary-400 outline-none focus:border-primary-500" />
+                 </div>
+              </div>
             </div>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Môi trường</label>
+                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Môi trường thực thi</label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 pointer-events-none" />
                   <select 
@@ -250,66 +321,148 @@ const LoadTest = () => {
                   </select>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Request đang chọn</label>
-                <div className="relative">
-                   <select 
-                      className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500 appearance-none cursor-pointer"
-                      value={activeRequest?.id || ''}
-                      onChange={(e) => {
-                        for (const col of collections) {
-                          const req = col.requests?.find(r => r.id == e.target.value);
-                          if (req) { setActiveRequest(req); break; }
-                        }
-                      }}
-                   >
-                      <option value="">-- Chọn API --</option>
-                      {collections.map(col => (
-                        <optgroup key={col.id} label={col.name} className="bg-dark-900">
-                          {col.requests?.map(req => (
-                            <option key={req.id} value={req.id}>{req.method} - {req.name}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                   </select>
-                   <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-600 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Số VUs</label>
-                  <input type="number" value={targetVus} onChange={(e) => setTargetVus(e.target.value)} disabled={isRunning} className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-dark-500 uppercase tracking-widest ml-1">Thời gian (s)</label>
-                  <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} disabled={isRunning} className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-2.5 text-sm text-dark-100 outline-none focus:border-primary-500" />
-                </div>
-              </div>
             </div>
           </section>
 
-          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800/50 space-y-4">
-            <div className="flex items-center gap-2 text-primary-400">
-              <BarChart3 className="w-5 h-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Thông số</h3>
+          {/* Builder area */}
+          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800/50 flex-1 flex flex-col space-y-4 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-dark-800 pb-4">
+              <div className="flex items-center gap-2 text-primary-400">
+                {testMode === 'single' ? <Zap className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
+                <h3 className="text-sm font-bold uppercase tracking-wider">
+                  {testMode === 'single' ? 'Chọn API để test' : 'Xây dựng kịch bản luồng'}
+                </h3>
+              </div>
+              {testMode === 'scenario' && (
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Tên kịch bản..." 
+                    value={scenarioName}
+                    onChange={(e) => setScenarioName(e.target.value)}
+                    className="bg-dark-950 border border-dark-800 rounded-lg px-3 py-1 text-[10px] text-primary-400 outline-none focus:border-primary-500 w-40"
+                  />
+                  <button 
+                    onClick={addStep}
+                    className="p-1.5 bg-primary-500/10 text-primary-400 rounded-lg hover:bg-primary-500/20 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="space-y-3">
-              <div className="bg-dark-950 p-3 rounded-xl border border-dark-800">
-                <p className="text-[9px] font-bold text-dark-500 uppercase mb-1">Target URL</p>
-                <p className="text-[10px] font-mono text-dark-300 break-all">{getResolvedUrl()}</p>
-              </div>
-              <div className="bg-dark-950 p-3 rounded-xl border border-dark-800">
-                <p className="text-[9px] font-bold text-dark-500 uppercase mb-1">Phương thức</p>
-                <span className="text-xs font-bold text-primary-400">{activeRequest?.method || 'GET'}</span>
-              </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+              {testMode === 'single' ? (
+                <div className="relative">
+                  <select 
+                    className="w-full bg-dark-950 border border-dark-800 rounded-xl px-4 py-3 text-sm text-dark-100 outline-none focus:border-primary-500 appearance-none cursor-pointer"
+                    value={activeRequest?.id || ''}
+                    onChange={(e) => {
+                      for (const col of collections) {
+                        const req = col.requests?.find(r => r.id == e.target.value);
+                        if (req) { setActiveRequest(req); break; }
+                      }
+                    }}
+                  >
+                    <option value="">-- Chọn API từ bộ sưu tập --</option>
+                    {collections.map(col => (
+                      <optgroup key={col.id} label={col.name} className="bg-dark-900">
+                        {col.requests?.map(req => (
+                          <option key={req.id} value={req.id}>{req.method} - {req.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-600 pointer-events-none" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scenarioSteps.map((step, index) => (
+                    <motion.div 
+                      key={step.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-dark-950 border border-dark-800 rounded-2xl p-4 relative group"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="mt-2 text-dark-600 flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-bold">#{index + 1}</span>
+                          <GripVertical className="w-4 h-4 opacity-30" />
+                        </div>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div className="relative">
+                            <select 
+                              className="w-full bg-dark-900 border border-dark-800 rounded-xl px-3 py-2 text-xs text-dark-100 outline-none focus:border-primary-500 appearance-none cursor-pointer"
+                              value={step.requestId}
+                              onChange={(e) => updateStep(step.id, 'requestId', e.target.value)}
+                            >
+                              <option value="">-- Chọn API --</option>
+                              {collections.map(col => (
+                                <optgroup key={col.id} label={col.name}>
+                                  {col.requests?.map(req => (
+                                    <option key={req.id} value={req.id}>{req.method} - {req.name}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-dark-600 pointer-events-none" />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer group/login">
+                              <input 
+                                type="checkbox" 
+                                checked={step.isLogin} 
+                                onChange={(e) => updateStep(step.id, 'isLogin', e.target.checked)}
+                                className="w-3.5 h-3.5 rounded border-dark-700 bg-dark-800 text-primary-500 focus:ring-primary-500"
+                              />
+                              <span className="text-[10px] font-bold text-dark-500 group-hover/login:text-primary-400 transition-all uppercase flex items-center gap-1">
+                                <Key className="w-3 h-3" /> Là API Login
+                              </span>
+                            </label>
+
+                            {step.isLogin && (
+                              <div className="flex items-center gap-2 bg-dark-900 px-2 py-1 rounded-lg border border-dark-800">
+                                <span className="text-[9px] font-bold text-dark-600">TOKEN PATH:</span>
+                                <input 
+                                  type="text" 
+                                  value={step.tokenPath} 
+                                  onChange={(e) => updateStep(step.id, 'tokenPath', e.target.value)}
+                                  className="bg-transparent border-none outline-none text-[10px] text-primary-400 w-24"
+                                  placeholder="data.token"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => removeStep(step.id)}
+                          className="text-dark-700 hover:text-red-500 transition-all p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                  
+                  {scenarioSteps.length === 0 && (
+                    <div className="py-12 border-2 border-dashed border-dark-800 rounded-3xl flex flex-col items-center justify-center text-dark-600">
+                       <Plus className="w-8 h-8 mb-2 opacity-20" />
+                       <p className="text-xs italic">Bấm "+" để thêm bước vào luồng kịch bản</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         </div>
 
-        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800 flex flex-col min-h-[350px]">
+        {/* Biểu đồ & Log bên phải */}
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-6 overflow-hidden">
+          <section className="bg-dark-900/50 p-6 rounded-2xl border border-dark-800 flex flex-col min-h-[300px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-sm font-bold text-primary-400 uppercase flex items-center gap-2">
                 <Activity className="w-5 h-5" /> Biểu đồ thời gian thực

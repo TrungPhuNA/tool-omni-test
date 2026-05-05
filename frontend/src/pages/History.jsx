@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, CheckCircle2, XCircle, Search, Trash2, ExternalLink, Activity, BarChart3, Terminal, X, Users, AlertCircle, HelpCircle } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Search, Trash2, ExternalLink, Activity, BarChart3, Terminal, X, Users, AlertCircle, HelpCircle, Zap } from 'lucide-react';
 import useStore from '../store/useStore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,10 +21,12 @@ const History = () => {
     }
   };
 
-  const filteredHistory = history.filter(item => 
-    item.request?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.request?.url?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredHistory = history.filter(item => {
+    const name = item.Request?.name || item.load_summary?.scenarioName || item.load_summary?.steps?.[0]?.name || '';
+    const url = item.Request?.url || item.load_summary?.steps?.[0]?.url || '';
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           url.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div className="flex-1 flex flex-col bg-dark-950 p-6 space-y-6 overflow-hidden">
@@ -71,23 +73,24 @@ const History = () => {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          item.request?.method === 'GET' ? 'bg-green-500/10 text-green-500' : 
-                          item.request?.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                          item.load_summary?.isScenario ? 'bg-purple-500/10 text-purple-400' :
+                          (item.Request?.method || item.request?.method || item.load_summary?.steps?.[0]?.method) === 'GET' ? 'bg-green-500/10 text-green-500' : 
+                          (item.Request?.method || item.request?.method || item.load_summary?.steps?.[0]?.method) === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
                         }`}>
-                          {item.request?.method || 'N/A'}
+                          {item.load_summary?.isScenario ? 'FLOW' : (item.Request?.method || item.request?.method || item.load_summary?.steps?.[0]?.method || 'N/A')}
                         </span>
                         <span className="text-sm font-semibold text-dark-100 truncate max-w-[200px] font-sans">
-                          {item.request?.name || 'Chưa đặt tên'}
+                          {item.load_summary?.scenarioName || item.Request?.name || item.request?.name || item.load_summary?.steps?.[0]?.name || 'Chưa đặt tên'}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1.5">
                          <span className="text-[10px] text-dark-500 truncate max-w-[200px] font-mono">
-                           {item.request?.url}
+                           {item.Request?.url || (item.load_summary?.isScenario ? 'Kịch bản luồng' : 'N/A')}
                          </span>
-                         {item.type === 'load' && (
-                           <div className="flex items-center gap-2 px-1.5 py-0.5 bg-primary-500/10 text-primary-400 rounded text-[9px] font-bold">
-                              <Users className="w-2.5 h-2.5" />
-                              {item.load_summary?.totalRequests || '?'} yêu cầu
+                         {item.load_summary?.isScenario && (
+                           <div className="flex items-center gap-2 px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded text-[9px] font-bold">
+                              <Activity className="w-2.5 h-2.5" />
+                              {item.load_summary?.steps?.length || 0} bước
                            </div>
                          )}
                       </div>
@@ -108,15 +111,28 @@ const History = () => {
                         Avg: {item.duration} ms
                       </div>
                       {item.load_summary && (
-                        <div className="flex items-center gap-3">
-                          <div className="text-[10px] text-dark-500 flex items-center gap-1">
-                            <Activity className="w-3 h-3 text-green-500" />
-                            {item.load_summary.rps} RPS
-                          </div>
-                          <div className="text-[10px] text-dark-500 flex items-center gap-1">
-                            <AlertCircle className={`w-3 h-3 ${item.load_summary.errorRate > 0 ? 'text-red-500' : 'text-green-500'}`} />
-                            {item.load_summary.errorRate}% Lỗi
-                          </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="px-2 py-0.5 bg-dark-900 border border-dark-800 rounded-full text-[10px] text-dark-400 flex items-center gap-1 shadow-sm">
+                            <Users className="w-3 h-3 text-primary-500" /> 
+                            <span className="font-bold text-dark-200">{item.load_summary?.vus || 0}</span> 
+                            <span className="opacity-60">VUs</span>
+                          </span>
+                          <span className="px-2 py-0.5 bg-dark-900 border border-dark-800 rounded-full text-[10px] text-dark-400 flex items-center gap-1 shadow-sm">
+                            <Zap className="w-3 h-3 text-yellow-500" /> 
+                            <span className="font-bold text-dark-200">{item.load_summary?.http_reqs || 0}</span> 
+                            <span className="opacity-60">tổng request</span>
+                          </span>
+                          {item.load_summary?.iterations && (
+                            <span className="text-[10px] text-dark-500 italic">
+                              (~{Math.round(item.load_summary.iterations / (item.load_summary.vus || 1))} lượt/VU)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {item.load_summary && (
+                        <div className="text-[10px] text-dark-500 flex items-center gap-1">
+                          <AlertCircle className={`w-3 h-3 ${item.load_summary.errorRate > 0 ? 'text-red-500' : 'text-green-500'}`} />
+                          {item.load_summary.errorRate}% Lỗi
                         </div>
                       )}
                     </div>
@@ -172,8 +188,10 @@ const History = () => {
                     {selectedItem.type === 'load' ? <BarChart3 className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-dark-50">{selectedItem.request?.name || 'Chi tiết kết quả'}</h3>
-                    <p className="text-xs text-dark-500 mt-0.5">{selectedItem.request?.url}</p>
+                    <h3 className="text-lg font-bold text-dark-50">
+                      {selectedItem.load_summary?.scenarioName || selectedItem.Request?.name || 'Kết quả Kiểm thử'}
+                    </h3>
+                    <p className="text-xs text-dark-500 mt-0.5">{selectedItem.Request?.url || 'Scenario Workflow'}</p>
                   </div>
                 </div>
                 <button 
@@ -191,7 +209,7 @@ const History = () => {
                     {[
                       { label: 'P95 Response Time', value: `${selectedItem.load_summary.p95} ms`, icon: Clock, color: 'text-primary-500' },
                       { label: 'Lưu lượng (RPS)', value: selectedItem.load_summary.rps, icon: Activity, color: 'text-green-500' },
-                      { label: 'Tổng Request', value: selectedItem.load_summary.totalRequests, icon: Users, color: 'text-blue-500' },
+                      { label: 'Tổng Request', value: selectedItem.load_summary.http_reqs || 0, icon: Zap, color: 'text-yellow-500' },
                       { label: 'Tỉ lệ lỗi', value: `${selectedItem.load_summary.errorRate}%`, icon: AlertCircle, color: selectedItem.load_summary.errorRate > 0 ? 'text-red-500' : 'text-green-500' },
                     ].map((stat, i) => (
                       <div key={i} className="bg-dark-800/50 border border-dark-700/50 rounded-2xl p-4">
@@ -202,6 +220,30 @@ const History = () => {
                         <div className="text-xl font-bold text-dark-50">{stat.value}</div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Scenario Steps Breakdown */}
+                {selectedItem.load_summary?.isScenario && selectedItem.load_summary.steps && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-dark-200 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-purple-400" />
+                      Chi tiết các bước trong luồng
+                    </h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {selectedItem.load_summary.steps.map((step, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-dark-800/40 p-3 rounded-xl border border-dark-700/50">
+                          <span className="text-[10px] font-bold text-dark-500 w-6">#{idx + 1}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            step.method === 'GET' ? 'bg-green-500/10 text-green-500' : 
+                            step.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                          }`}>
+                            {step.method}
+                          </span>
+                          <span className="text-sm text-dark-100 font-medium">{step.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

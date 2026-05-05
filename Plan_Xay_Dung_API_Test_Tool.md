@@ -20,9 +20,10 @@
 - [ ] **Real-time Monitor:** Theo dõi RPS (Request per second), Latency (P95, P99) qua biểu đồ.
 
 ### 3. Hệ thống & Báo cáo
-- [ ] **Collections:** Lưu trữ nhóm API theo dự án/module.
-- [ ] **History:** Lưu lịch sử các lần chạy test để so sánh hiệu năng qua từng Sprint.
+- [x] **Collections:** Lưu trữ nhóm API theo dự án/module.
+- [x] **History:** Lưu lịch sử các lần chạy test để so sánh hiệu năng qua từng Sprint.
 - [ ] **Export Report:** Xuất báo cáo dạng PDF/HTML có biểu đồ chuyên nghiệp.
+- [ ] **Analytics Dashboard:** So sánh hiệu năng giữa các lần chạy, biểu đồ xu hướng (Trend chart).
 
 ## PHẦN 2: LỘ TRÌNH TRIỂN KHAI (ROADMAP)
 
@@ -36,12 +37,15 @@
 - [ ] Xây dựng logic Pre-request Script (ví dụ: tự động lấy token trước khi gọi API chính).
 - [ ] Thêm tính năng Environment Variables.
 
-### Tuần 3: Load Testing & Visualization
-- [ ] Tích hợp thư viện **k6** vào Backend Node.js.
-- [ ] Frontend xây dựng màn hình cấu hình CCU.
-- [ ] Dùng Socket.io để đẩy dữ liệu test tải từ k6 lên React vẽ biểu đồ realtime.
+### Tuần 3: Load Testing & Visualization [DONE]
+- [x] Tích hợp thư viện **k6** vào Backend Node.js.
+- [x] Frontend xây dựng màn hình cấu hình CCU.
+- [x] Dùng Socket.io để đẩy dữ liệu test tải từ k6 lên React vẽ biểu đồ realtime.
+- [x] Việt hóa toàn bộ giao diện và nâng cấp UI Premium (Toast, Modal).
 
-### Tuần 4: Hoàn thiện & Đóng gói
-- [ ] Xử lý Export báo cáo.
+### Tuần 4: Hoàn thiện & Báo cáo [IN PROGRESS]
+- [ ] Xử lý Export báo cáo (PDF/CSV).
+- [ ] Trang Dashboard phân tích hiệu năng tổng thể.
+- [ ] Hệ thống cảnh báo ngưỡng (Thresholds).
 - [ ] Viết tài liệu hướng dẫn sử dụng cho Tester.
 - [ ] Triển khai lên Docker cho cả Team dùng chung.

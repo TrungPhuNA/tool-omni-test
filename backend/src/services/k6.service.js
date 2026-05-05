@@ -9,14 +9,27 @@ class K6Service {
     }
 
     generateScript(config) {
-        let { method, url, headers, body, vus, duration } = config;
+        // config có thể là 1 request đơn lẻ hoặc 1 array các requests (Scenario)
+        const isScenario = Array.isArray(config.requests);
+        const requests = isScenario ? config.requests : [config];
+        
+        // Tìm API login để đưa vào setup()
+        const loginReq = requests.find(r => r.isLogin);
+        const otherReqs = requests.filter(r => !r.isLogin);
 
-        const safeHeaders = (headers && typeof headers === 'object' && !Array.isArray(headers))
-            ? headers
-            : {};
-
-        // Chuyển duration sang giây để tính toán stages
-        const durSec = parseInt(duration) || 10;
+        let setupBlock = '';
+        if (loginReq) {
+            setupBlock = `
+export function setup() {
+  const res = http.request('${loginReq.method}', '${loginReq.url}', '${loginReq.body || ''}', {
+    headers: ${JSON.stringify(loginReq.headers || {})}
+  });
+  const token = res.json('${loginReq.tokenPath || 'data.token'}');
+  console.log('[SETUP] Login success, token extracted');
+  return { token };
+}
+            `;
+        }
 
         const script = `
 import http from 'k6/http';
@@ -28,8 +41,8 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2s', target: ${vus || 1} },
-        { duration: '${durSec}s', target: ${vus || 1} },
+        { duration: '2s', target: ${config.vus || 1} },
+        { duration: '${config.duration || '10s'}', target: ${config.vus || 1} },
         { duration: '2s', target: 0 },
       ],
       gracefulRampDown: '1s',
@@ -42,61 +55,77 @@ export const options = {
   },
 };
 
-export default function () {
-  group('API_Request_Execution', function () {
-    console.log(\`[VU \${__VU}] Sending ${method} request...\`);
-    const res = http.request('${method}', '${url}', '${body || ''}', {
-      headers: ${JSON.stringify(safeHeaders)},
-      timeout: '10s'
-    });
+${setupBlock}
+
+export default function (data) {
+  const token = data ? data.token : null;
+
+    ${requests.map((req, index) => {
+      const method = req.method || 'GET';
+      const url = req.url || '';
+      const body = typeof req.body === 'object' ? JSON.stringify(req.body) : (req.body || '');
+      const headers = req.headers || {};
+      
+      return `
+  group('Step_${index + 1}_${(req.name || 'API').replace(/'/g, "\\'")}', function () {
+    const params = {
+      headers: ${JSON.stringify(headers)}
+    };
+    
+    if (token) {
+      params.headers['Authorization'] = \`Bearer \${token}\`;
+    }
+
+    const res = http.request('${method}', '${url}', ${body ? `\`${body.replace(/`/g, '\\`').replace(/\${/g, '\\${')}\`` : "''"}, params);
     
     check(res, {
       'status is 200': (r) => r.status === 200,
-      'response time < 1000ms': (r) => r.timings.duration < 1000,
+      'response time < 2000ms': (r) => r.timings.duration < 2000,
     });
-  });
+  });`;
+    }).join('\n  sleep(0.5);\n')}
   
   sleep(1);
 }
-    `;
+        `;
         const scriptPath = path.join(__dirname, '../../temp_scripts', `test_${Date.now()}.js`);
+        if (!fs.existsSync(path.join(__dirname, '../../temp_scripts'))) {
+            fs.mkdirSync(path.join(__dirname, '../../temp_scripts'), { recursive: true });
+        }
         fs.writeFileSync(scriptPath, script);
         return scriptPath;
     }
 
-    runTest(testId, scriptPath, io, requestId = null) {
-        // Quay lại dùng k6 run trực tiếp để tránh lỗi socket trên macOS
+    runTest(testId, scriptPath, io, requestId = null, requests = null, passedScenarioName = null) {
         const k6Process = spawn('k6', ['run', scriptPath]);
-
         this.activeProcesses.set(testId, k6Process);
 
         let fullOutput = '';
-
         k6Process.stdout.on('data', (data) => {
             const output = data.toString();
             fullOutput += output;
-            console.log(`k6 stdout [${testId}]: ${output}`);
             io.emit('k6:progress', { testId, output });
         });
 
         k6Process.stderr.on('data', (data) => {
             const output = data.toString();
             fullOutput += output;
-            console.log(`k6 stderr [${testId}]: ${output}`);
             io.emit('k6:progress', { testId, output });
         });
 
         k6Process.on('error', (err) => {
-            console.error(`Failed to start k6 process: ${err.message}`);
             io.emit('k6:error', { testId, message: `Không thể khởi động k6: ${err.message}` });
             this.activeProcesses.delete(testId);
         });
 
         k6Process.on('close', async (code) => {
-            console.log(`k6 process [${testId}] closed with code ${code}`);
-
-            // Phân tích kết quả cơ bản từ log để lưu history
             const summary = this.parseSummary(fullOutput);
+            
+            // Xử lý tên hiển thị cho history
+            let scenarioName = passedScenarioName;
+            if (!scenarioName && requests && requests.length > 1) {
+                scenarioName = requests.map(r => r.name || 'API').join(', ');
+            }
 
             try {
                 await TestHistory.create({
@@ -104,9 +133,14 @@ export default function () {
                     type: 'load',
                     status: summary.errorRate > 50 ? 'fail' : 'pass',
                     duration: Math.round(summary.p95 || 0),
-                    status_code: 200, // Load test thường quan tâm summary hơn
-                    load_summary: summary,
-                    response: { full_log: fullOutput.slice(-5000) } // Lưu 5000 ký tự log cuối
+                    status_code: 200,
+                    load_summary: {
+                        ...summary,
+                        isScenario: !!(requests && requests.length > 1),
+                        scenarioName: scenarioName,
+                        steps: requests ? requests.map(r => ({ name: r.name, method: r.method })) : []
+                    },
+                    response: { full_log: fullOutput.slice(-5000) }
                 });
             } catch (dbErr) {
                 console.error('Failed to save load test history:', dbErr);
@@ -126,12 +160,16 @@ export default function () {
         const rpsMatch = output.match(/http_reqs\.*:.*([\d.]+)\/s/);
         const totalMatch = output.match(/http_reqs\.*:.*(\d+)\s/);
         const failedMatch = output.match(/http_req_failed\.*:.*([\d.]+)%/);
+        const vusMatch = output.match(/vus\.*:.*(\d+)/);
+        const iterationsMatch = output.match(/iterations\.*:.*(\d+)/);
 
         return {
             p95: p95Match ? parseFloat(p95Match[1]) : 0,
-            rps: rpsMatch ? parseFloat(rpsMatch[1]) : 0,
-            totalRequests: totalMatch ? parseInt(totalMatch[1]) : 0,
-            errorRate: failedMatch ? parseFloat(failedMatch[1]) : 0
+            rps: rpsMatch ? Math.round(parseFloat(rpsMatch[1])) : 0,
+            http_reqs: totalMatch ? parseInt(totalMatch[1]) : 0,
+            errorRate: failedMatch ? parseFloat(failedMatch[1]) : 0,
+            vus: vusMatch ? parseInt(vusMatch[1]) : 0,
+            iterations: iterationsMatch ? parseInt(iterationsMatch[1]) : 0
         };
     }
 

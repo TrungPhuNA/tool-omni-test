@@ -129,7 +129,7 @@ const MainLayout = () => {
             />
 
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Outlet />
+                <Outlet context={{ showToast }} />
             </div>
 
             <CollectionModal

@@ -1,10 +1,12 @@
 import React from 'react';
+import { useOutletContext } from 'react-router-dom';
 import useStore from '../store/useStore';
 import Header from '../components/layout/Header';
 import RequestBuilder from '../components/features/builder/RequestBuilder';
 import ResponsePanel from '../components/features/builder/ResponsePanel';
 
 const Home = () => {
+    const { showToast } = useOutletContext();
     const {
         collections,
         createCollection,
@@ -29,6 +31,7 @@ const Home = () => {
             }
         }
         await saveRequest(collectionId, activeRequest);
+        showToast('Đã lưu thay đổi!');
     };
 
     const handleSend = async () => {

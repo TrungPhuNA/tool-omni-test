@@ -1,10 +1,11 @@
 import React from 'react';
 import useStore from '../store/useStore';
 import ScenarioRunner from '../components/features/scenarios/ScenarioRunner';
-import { useParams } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
 
 const ScenarioPage = () => {
     const { id } = useParams();
+    const { showToast } = useOutletContext();
     const { 
         activeScenario, 
         collections, 
