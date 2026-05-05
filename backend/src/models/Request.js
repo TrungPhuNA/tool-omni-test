@@ -13,6 +13,10 @@ const Request = sequelize.define('Request', {
     allowNull: false,
     comment: 'FK → collections.id'
   },
+  folder_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,

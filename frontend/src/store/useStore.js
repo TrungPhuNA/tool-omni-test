@@ -100,17 +100,53 @@ const useStore = create((set, get) => ({
     }
   },
 
-  saveRequest: async (collectionId, requestData) => {
+  createFolder: async (collectionId, name) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      const res = await axios.post(`${API_URL}/folders`, { 
+        collection_id: collectionId, 
+        name 
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+      return res.data;
+    } catch (err) {
+      console.error('Failed to create folder', err);
+    }
+  },
+
+  deleteFolder: async (id) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.delete(`${API_URL}/folders/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+    } catch (err) {
+      console.error('Failed to delete folder', err);
+    }
+  },
+
+  saveRequest: async (collectionId, requestData, folderId = null) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     const token = get().token;
     try {
       let res;
+      const payload = { 
+        ...requestData, 
+        collection_id: collectionId,
+        folder_id: folderId || requestData.folder_id || null
+      };
+
       if (requestData.id) {
-        res = await axios.put(`${API_URL}/requests/${requestData.id}`, requestData, {
+        res = await axios.put(`${API_URL}/requests/${requestData.id}`, payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
       } else {
-        res = await axios.post(`${API_URL}/requests`, { ...requestData, collection_id: collectionId }, {
+        res = await axios.post(`${API_URL}/requests`, payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
       }

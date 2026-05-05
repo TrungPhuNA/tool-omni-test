@@ -34,6 +34,7 @@ io.on('connection', (socket) => {
 const authRoutes = require('./src/routes/auth.route');
 const proxyRoutes = require('./src/routes/proxy.route');
 const collectionRoutes = require('./src/routes/collection.route');
+const folderRoutes = require('./src/routes/folder.route');
 const requestRoutes = require('./src/routes/request.route');
 const environmentRoutes = require('./src/routes/environment.route');
 const scenarioRoutes = require('./src/routes/scenario.route');
@@ -48,6 +49,7 @@ app.use('/api/v1/auth', authRoutes);
 // Protected Routes
 app.use('/api/v1/proxy', authMiddleware, proxyRoutes);
 app.use('/api/v1/collections', authMiddleware, collectionRoutes);
+app.use('/api/v1/folders', authMiddleware, folderRoutes);
 app.use('/api/v1/requests', authMiddleware, requestRoutes);
 app.use('/api/v1/environments', authMiddleware, environmentRoutes);
 app.use('/api/v1/scenarios', authMiddleware, scenarioRoutes);

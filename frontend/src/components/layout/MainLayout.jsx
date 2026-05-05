@@ -3,6 +3,7 @@ import useStore from '../../store/useStore';
 import Sidebar from './Sidebar';
 import Toast from '../common/Toast';
 import CollectionModal from '../features/collections/CollectionModal';
+import FolderModal from '../features/folders/FolderModal';
 import EnvironmentModal from '../features/environments/EnvironmentModal';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
@@ -27,6 +28,9 @@ const MainLayout = () => {
     const [expandedCollections, setExpandedCollections] = useState({});
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newColName, setNewColName] = useState('');
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [targetColId, setTargetColId] = useState(null);
     const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
     const [editingEnv, setEditingEnv] = useState(null);
     const [toast, setToast] = useState(null);
@@ -51,6 +55,15 @@ const MainLayout = () => {
             setNewColName('');
             setIsModalOpen(false);
             showToast('Đã tạo Collection mới!');
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (newFolderName && targetColId) {
+            await createFolder(targetColId, newFolderName);
+            setNewFolderName('');
+            setIsFolderModalOpen(false);
+            showToast('Đã tạo thư mục mới!');
         }
     };
 
@@ -90,6 +103,7 @@ const MainLayout = () => {
         setActiveRequest({
             id: req.id,
             collection_id: req.collection_id,
+            folder_id: req.folder_id,
             name: req.name,
             method: req.method,
             url: req.url,
@@ -125,6 +139,10 @@ const MainLayout = () => {
                 activeScenario={activeScenario}
                 viewMode={viewMode}
                 setIsModalOpen={setIsModalOpen}
+                setIsFolderModalOpen={(colId) => {
+                    setTargetColId(colId);
+                    setIsFolderModalOpen(true);
+                }}
                 setIsEnvModalOpen={setIsEnvModalOpen}
             />
 
@@ -138,6 +156,14 @@ const MainLayout = () => {
                 newColName={newColName}
                 setNewColName={setNewColName}
                 handleCreateCollection={handleCreateCollection}
+            />
+
+            <FolderModal
+                isOpen={isFolderModalOpen}
+                onClose={() => setIsFolderModalOpen(false)}
+                folderName={newFolderName}
+                setFolderName={setNewFolderName}
+                handleCreateFolder={handleCreateFolder}
             />
 
             <EnvironmentModal

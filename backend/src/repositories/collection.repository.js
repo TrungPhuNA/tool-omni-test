@@ -1,9 +1,10 @@
-const { Collection, Request, Scenario } = require('../models');
+const { Collection, Request, Scenario, Folder } = require('../models');
 
 class CollectionRepository {
   async getAll() {
     return await Collection.findAll({
       include: [
+        { model: Folder, as: 'folders' },
         { model: Request, as: 'requests' },
         { model: Scenario, as: 'scenarios' }
       ],
@@ -14,6 +15,7 @@ class CollectionRepository {
   async getById(id) {
     return await Collection.findByPk(id, {
       include: [
+        { model: Folder, as: 'folders' },
         { model: Request, as: 'requests' },
         { model: Scenario, as: 'scenarios' }
       ]
