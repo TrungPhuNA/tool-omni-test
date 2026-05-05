@@ -15,7 +15,8 @@ import {
   MoreVertical,
   Trash2,
   FileCode,
-  Copy
+  Copy,
+  FileJson
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
@@ -37,12 +38,18 @@ const Sidebar = ({
   style
 }) => {
   const navigate = useNavigate();
-  const { user, logout, collections, createFolder, deleteFolder, moveRequest, deleteRequest, duplicateRequest, deleteCollection } = useStore();
+  const { user, logout, collections, createFolder, deleteFolder, moveRequest, deleteRequest, duplicateRequest, deleteCollection, loadExample, deleteExample } = useStore();
   const [expandedFolders, setExpandedFolders] = useState({});
+  const [expandedRequests, setExpandedRequests] = useState({});
   const [dragOverId, setDragOverId] = useState(null);
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleRequest = (e, id) => {
+    e.stopPropagation();
+    setExpandedRequests(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleImportCurl = (e, collectionId, folderId = null) => {
@@ -240,37 +247,87 @@ const Sidebar = ({
                         {expandedFolders[folder.id] && (
                           <div className="ml-5 border-l border-dark-800/30 pl-1 min-h-[10px]">
                             {col.requests?.filter(r => r.folder_id === folder.id).map(req => (
-                              <div 
-                                key={req.id}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, req.id)}
-                                onClick={() => loadRequest(req)}
-                                className={`group flex items-center gap-2 p-1.5 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
-                              >
-                                <span className={`text-[9px] font-bold w-7 ${
-                                  req.method === 'GET' ? 'text-green-500' : 
-                                  req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
-                                }`}>{req.method}</span>
-                                <span className="text-xs truncate text-dark-400 flex-1">{req.name}</span>
-                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                                  <button 
+                              <div key={req.id}>
+                                <div 
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, req.id)}
+                                  className={`group flex items-center gap-2 px-1.5 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
+                                >
+                                  {/* Toggle Chevron Area */}
+                                  <div 
+                                    onClick={(e) => toggleRequest(e, req.id)} 
+                                    className={`p-1 hover:bg-dark-700 rounded transition-colors ${req.examples?.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                                  >
+                                    {expandedRequests[req.id] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                  </div>
+
+                                  {/* Load Request Area */}
+                                  <div onClick={() => loadRequest(req)} className="flex items-center gap-1.5 flex-1 min-w-0 py-1.5">
+                                    <span className={`text-[9px] font-black w-7 shrink-0 ${
+                                      req.method === 'GET' ? 'text-green-500' : 
+                                      req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
+                                    }`}>{req.method}</span>
+                                    <span className="text-xs truncate text-dark-300 flex-1">{req.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        duplicateRequest(req.id);
+                                      }}
+                                      className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                                      title="Nhân bản API"
+                                    >
+                                      <Copy className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button 
+                                      onClick={(e) => handleDeleteRequest(e, req)}
+                                      className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
+                                      title="Xóa API"
+                                    >
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                {/* Examples/Logs under Request */}
+                                {expandedRequests[req.id] && req.examples?.map(ex => (
+                                  <div 
+                                    key={ex.id}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      duplicateRequest(req.id);
+                                      loadExample(ex);
                                     }}
-                                    className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
-                                    title="Nhân bản API"
+                                    className="flex items-center gap-2 py-1 px-3 ml-4 hover:bg-dark-800/40 rounded-md cursor-pointer group/ex border-l border-dark-800/50"
                                   >
-                                    <Copy className="w-2.5 h-2.5" />
-                                  </button>
-                                  <button 
-                                    onClick={(e) => handleDeleteRequest(e, req)}
-                                    className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
-                                    title="Xóa API"
-                                  >
-                                    <Trash2 className="w-2.5 h-2.5" />
-                                  </button>
-                                </div>
+                                    <FileJson className="w-3 h-3 text-dark-600 group-hover/ex:text-primary-500/70" />
+                                    <span className="text-[11px] text-dark-500 truncate flex-1 group-hover/ex:text-dark-300">{ex.name}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      {ex.response_status && (
+                                        <span className={`text-[9px] font-bold ${ex.response_status < 400 ? 'text-green-600/70' : 'text-red-600/70'}`}>
+                                          {ex.response_status}
+                                        </span>
+                                      )}
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openConfirm({
+                                            title: 'Xóa Log',
+                                            message: `Bạn có chắc muốn xóa bản log "${ex.name}"?`,
+                                            onConfirm: async () => {
+                                              await deleteExample(ex.id);
+                                              showToast(`Đã xóa bản log "${ex.name}"`);
+                                            },
+                                            type: 'danger'
+                                          });
+                                        }}
+                                        className="opacity-0 group-hover/ex:opacity-100 p-1 hover:bg-red-500/10 rounded text-dark-600 hover:text-red-500 transition-all"
+                                      >
+                                        <Trash2 className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ))}
                             {(!col.requests?.filter(r => r.folder_id === folder.id).length) && (
@@ -282,37 +339,88 @@ const Sidebar = ({
                     ))}
 
                     {col.requests?.filter(r => !r.folder_id).map((req) => (
-                      <div 
-                        key={req.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, req.id)}
-                        onClick={() => loadRequest(req)}
-                        className={`group flex items-center gap-2 p-2 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ml-1 ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
-                      >
-                        <span className={`text-[10px] font-bold w-8 ${
-                          req.method === 'GET' ? 'text-green-500' : 
-                          req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
-                        }`}>{req.method}</span>
-                        <span className="text-sm truncate text-dark-300 flex-1">{req.name}</span>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                          <button 
+                      <div key={req.id}>
+                        <div 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, req.id)}
+                          className={`group flex items-center gap-2 px-2 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ml-1 ${activeRequest.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
+                        >
+                          {/* Toggle Chevron Area */}
+                          <div 
+                            onClick={(e) => toggleRequest(e, req.id)} 
+                            className={`p-1 hover:bg-dark-700 rounded transition-colors ${req.examples?.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                          >
+                            {expandedRequests[req.id] ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </div>
+
+                          {/* Load Request Area */}
+                          <div onClick={() => loadRequest(req)} className="flex items-center gap-2 flex-1 min-w-0 py-2">
+                            <span className={`text-[10px] font-black w-8 shrink-0 ${
+                              req.method === 'GET' ? 'text-green-500' : 
+                              req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'
+                            }`}>{req.method}</span>
+                            <span className="text-sm truncate text-dark-300 flex-1 font-medium">{req.name}</span>
+                          </div>
+
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                duplicateRequest(req.id);
+                              }}
+                              className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
+                              title="Nhân bản API"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDeleteRequest(e, req)}
+                              className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
+                              title="Xóa API"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Examples/Logs for direct requests */}
+                        {expandedRequests[req.id] && req.examples?.map(ex => (
+                          <div 
+                            key={ex.id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              duplicateRequest(req.id);
+                              loadExample(ex);
                             }}
-                            className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 transition-all"
-                            title="Nhân bản API"
+                            className="flex items-center gap-2 py-1.5 px-4 ml-6 hover:bg-dark-800/40 rounded-md cursor-pointer group/ex border-l border-dark-800/50"
                           >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button 
-                            onClick={(e) => handleDeleteRequest(e, req)}
-                            className="p-1 hover:bg-red-500/10 rounded text-dark-500 hover:text-red-500 transition-all"
-                            title="Xóa API"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+                            <FileJson className="w-3.5 h-3.5 text-dark-600 group-hover/ex:text-primary-500/70" />
+                            <span className="text-xs text-dark-500 truncate flex-1 group-hover/ex:text-dark-300">{ex.name}</span>
+                            <div className="flex items-center gap-2">
+                              {ex.response_status && (
+                                <span className={`text-[10px] font-bold ${ex.response_status < 400 ? 'text-green-600/70' : 'text-red-600/70'}`}>
+                                  {ex.response_status}
+                                </span>
+                              )}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openConfirm({
+                                    title: 'Xóa Log',
+                                    message: `Bạn có chắc muốn xóa bản log "${ex.name}"?`,
+                                    onConfirm: async () => {
+                                      await deleteExample(ex.id);
+                                      showToast(`Đã xóa bản log "${ex.name}"`);
+                                    },
+                                    type: 'danger'
+                                  });
+                                }}
+                                className="opacity-0 group-hover/ex:opacity-100 p-1 hover:bg-red-500/10 rounded text-dark-600 hover:text-red-500 transition-all"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ))}
 

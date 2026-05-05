@@ -1,11 +1,25 @@
-const { Collection, Request, Scenario, Folder } = require('../models');
+const { Collection, Request, Scenario, Folder, RequestExample } = require('../models');
 
 class CollectionRepository {
   async getAll() {
     return await Collection.findAll({
       include: [
-        { model: Folder, as: 'folders' },
-        { model: Request, as: 'requests' },
+        { 
+          model: Folder, 
+          as: 'folders',
+          include: [
+            { 
+              model: Request, 
+              as: 'requests',
+              include: [{ model: RequestExample, as: 'examples' }]
+            }
+          ]
+        },
+        { 
+          model: Request, 
+          as: 'requests',
+          include: [{ model: RequestExample, as: 'examples' }]
+        },
         { model: Scenario, as: 'scenarios' }
       ],
       order: [['created_at', 'DESC']]
@@ -15,8 +29,22 @@ class CollectionRepository {
   async getById(id) {
     return await Collection.findByPk(id, {
       include: [
-        { model: Folder, as: 'folders' },
-        { model: Request, as: 'requests' },
+        { 
+          model: Folder, 
+          as: 'folders',
+          include: [
+            { 
+              model: Request, 
+              as: 'requests',
+              include: [{ model: RequestExample, as: 'examples' }]
+            }
+          ]
+        },
+        { 
+          model: Request, 
+          as: 'requests',
+          include: [{ model: RequestExample, as: 'examples' }]
+        },
         { model: Scenario, as: 'scenarios' }
       ]
     });

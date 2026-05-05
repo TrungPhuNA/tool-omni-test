@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Plus, Trash2, ShieldCheck } from 'lucide-react';
+import { Play, Plus, Trash2, ShieldCheck, Save } from 'lucide-react';
 import useStore from '../../../store/useStore';
+import SaveSnapshotModal from '../../common/SaveSnapshotModal';
 
 const BodyEditor = ({ body, onChange }) => {
   const [height, setHeight] = useState(300);
@@ -79,10 +80,37 @@ const RequestBuilder = ({ handleSend }) => {
     removeHeader,
     addParam,
     updateParam,
-    removeParam
+    removeParam,
+    examples,
+    fetchExamples,
+    updateExample,
+    deleteExample,
+    setResponse,
+    loadExample
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('params');
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [editingExample, setEditingExample] = useState(null);
+
+  useEffect(() => {
+    if (activeRequest?.id && activeTab === 'examples') {
+      fetchExamples(activeRequest.id);
+    }
+  }, [activeRequest?.id, activeTab]);
+
+  const handleOpenRename = (ex) => {
+    setEditingExample(ex);
+    setIsRenameModalOpen(true);
+  };
+
+  const handleUpdateName = async (newName) => {
+    if (editingExample && newName) {
+      await updateExample(editingExample.id, { name: newName });
+      setIsRenameModalOpen(false);
+      setEditingExample(null);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6 flex-1 flex flex-col overflow-hidden">
@@ -125,7 +153,7 @@ const RequestBuilder = ({ handleSend }) => {
       {/* Request Tabs */}
       <div className="glass-card flex-1 flex flex-col overflow-hidden">
          <div className="flex border-b border-dark-800 p-1 gap-1">
-            {['params', 'headers', 'body', 'auth', 'assertions'].map((tab) => (
+            {['params', 'headers', 'body', 'auth', 'assertions', 'examples'].map((tab) => (
               <button
                 key={tab}
                 className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${
@@ -222,6 +250,75 @@ const RequestBuilder = ({ handleSend }) => {
 
             {activeTab === 'body' && <BodyEditor body={activeRequest.body} onChange={(val) => setActiveRequest({ body: val })} />}
 
+            {activeTab === 'examples' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between mb-2">
+                   <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">Saved Logs (Snapshots)</span>
+                </div>
+                
+                <div className="grid gap-3">
+                  {examples.map(ex => (
+                    <div key={ex.id} className="flex items-center justify-between p-3 bg-dark-800/30 border border-dark-800 rounded-xl hover:border-primary-500/30 transition-all group">
+                      <div className="flex flex-col gap-1 min-w-0 flex-1 cursor-pointer" onClick={() => loadExample(ex)}>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                            ex.method === 'GET' ? 'bg-green-500/10 text-green-500' : 
+                            ex.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                          }`}>{ex.method}</span>
+                          <span className="text-sm font-bold text-dark-100 truncate">{ex.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-dark-500 font-medium">
+                          <span className="truncate max-w-[250px] font-mono">{ex.url}</span>
+                          <span>•</span>
+                          <span>{new Date(ex.created_at).toLocaleString()}</span>
+                          {ex.response_status && (
+                            <>
+                              <span>•</span>
+                              <span className={ex.response_status < 400 ? 'text-green-500' : 'text-red-500'}>
+                                {ex.response_status}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button 
+                          onClick={() => loadExample(ex)}
+                          className="px-3 py-1.5 text-[10px] font-bold bg-primary-600/10 text-primary-400 hover:bg-primary-600 hover:text-white rounded-lg transition-all"
+                        >
+                          LOAD
+                        </button>
+                        <button 
+                          onClick={() => handleOpenRename(ex)}
+                          className="p-1.5 text-dark-500 hover:text-dark-200 transition-colors"
+                          title="Rename"
+                        >
+                          <Plus className="w-4 h-4 rotate-45" /> {/* Use Plus rotated as a pencil alternative if no edit icon */}
+                        </button>
+                        <button 
+                          onClick={() => deleteExample(ex.id)}
+                          className="p-1.5 text-dark-500 hover:text-red-500 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {examples.length === 0 && (
+                    <div className="text-center py-12 text-dark-600 space-y-3">
+                      <div className="w-12 h-12 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-2 opacity-30">
+                        <Save className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-medium italic">Chưa có snapshot nào được lưu.</p>
+                      <p className="text-xs">Nhấn "SAVE LOG" ở bảng Response để lưu lại kết quả.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {activeTab === 'auth' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="p-4 bg-primary-500/5 border border-primary-500/10 rounded-xl flex items-start gap-4">
@@ -293,8 +390,15 @@ const RequestBuilder = ({ handleSend }) => {
                 </div>
               </div>
             )}
-         </div>
-      </div>
+          </div>
+       </div>
+
+       <SaveSnapshotModal 
+         isOpen={isRenameModalOpen}
+         onClose={() => setIsRenameModalOpen(false)}
+         onSave={handleUpdateName}
+         defaultName={editingExample?.name}
+       />
     </div>
   );
 };

@@ -11,6 +11,7 @@ const useStore = create((set, get) => ({
   activeCollection: null,
   tabs: [],
   activeTabId: null,
+  examples: [],
   activeRequest: {
     method: 'GET',
     url: '',
@@ -386,6 +387,85 @@ const useStore = create((set, get) => ({
     } catch (err) {
       console.error('Failed to delete environment', err);
     }
+  },
+
+  fetchExamples: async (requestId) => {
+    const { token } = get();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    try {
+      const res = await axios.get(`${API_URL}/examples/request/${requestId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      set({ examples: res.data.data });
+    } catch (err) {
+      console.error('Failed to fetch examples', err);
+    }
+  },
+
+  saveExample: async (data) => {
+    const { token, fetchExamples, fetchCollections } = get();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    try {
+      await axios.post(`${API_URL}/examples`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await fetchExamples(data.request_id);
+      await fetchCollections(); // Sync sidebar
+      return true;
+    } catch (err) {
+      console.error('Failed to save example', err);
+      return false;
+    }
+  },
+
+  updateExample: async (id, data) => {
+    const { token, activeRequest, fetchExamples, fetchCollections } = get();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    try {
+      await axios.put(`${API_URL}/examples/${id}`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (activeRequest?.id) await fetchExamples(activeRequest.id);
+      await fetchCollections(); // Sync sidebar
+      return true;
+    } catch (err) {
+      console.error('Failed to update example', err);
+      return false;
+    }
+  },
+
+  deleteExample: async (id) => {
+    const { token, activeRequest, fetchExamples, fetchCollections } = get();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    try {
+      await axios.delete(`${API_URL}/examples/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (activeRequest?.id) await fetchExamples(activeRequest.id);
+      await fetchCollections(); // Sync sidebar
+      return true;
+    } catch (err) {
+      console.error('Failed to delete example', err);
+      return false;
+    }
+  },
+
+  loadExample: (ex) => {
+    const { setActiveRequest, setResponse } = get();
+    setActiveRequest({
+      method: ex.method,
+      url: ex.url,
+      headers: ex.headers || [],
+      params: ex.params || [],
+      body: ex.body || ''
+    });
+    setResponse({
+      statusCode: ex.response_status,
+      statusText: ex.response_status === 200 ? 'OK' : 'Response Log',
+      body: ex.response_body,
+      headers: ex.response_headers || {},
+      responseTime: ex.response_time || 0
+    });
   },
 
   addHeader: () => {

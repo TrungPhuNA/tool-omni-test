@@ -6,6 +6,7 @@ const Folder = require('./Folder');
 const TestHistory = require('./TestHistory');
 const Scenario = require('./Scenario');
 const DataDrivenTest = require('./DataDrivenTest');
+const RequestExample = require('./RequestExample');
 const User = require('./User');
 
 // Associations
@@ -20,6 +21,9 @@ Request.belongsTo(Folder, { foreignKey: 'folder_id', as: 'folder' });
 
 Request.hasMany(TestHistory, { foreignKey: 'request_id', as: 'histories' });
 TestHistory.belongsTo(Request, { foreignKey: 'request_id', as: 'request' });
+
+Request.hasMany(RequestExample, { foreignKey: 'request_id', as: 'examples' });
+RequestExample.belongsTo(Request, { foreignKey: 'request_id', as: 'request' });
 
 Collection.hasMany(Scenario, { foreignKey: 'collection_id', as: 'scenarios' });
 Scenario.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });
@@ -36,5 +40,6 @@ module.exports = {
   TestHistory,
   Scenario,
   DataDrivenTest,
+  RequestExample,
   User
 };

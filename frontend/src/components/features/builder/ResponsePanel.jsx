@@ -1,11 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Cpu, Copy } from 'lucide-react';
+import { Clock, Cpu, Copy, Save } from 'lucide-react';
+import useStore from '../../../store/useStore';
+import SaveSnapshotModal from '../../common/SaveSnapshotModal';
 
 const ResponsePanel = ({ response, isLoading }) => {
+  const { activeRequest, saveExample } = useStore();
   const [bodyHeight, setBodyHeight] = useState(400); // Default body height
   const [isResizing, setIsResizing] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
+
+  const handleSaveExample = async (name) => {
+    if (!response || !activeRequest || !name) return;
+    
+    await saveExample({
+      request_id: activeRequest.id,
+      name,
+      method: activeRequest.method,
+      url: activeRequest.url,
+      headers: activeRequest.headers,
+      params: activeRequest.params,
+      body: activeRequest.body,
+      response_status: response.statusCode,
+      response_body: response.body,
+      response_headers: response.headers,
+      response_time: response.responseTime
+    });
+    
+    setIsSaveModalOpen(false);
+  };
 
   const startResizing = (e) => {
     setIsResizing(true);
@@ -48,15 +72,26 @@ const ResponsePanel = ({ response, isLoading }) => {
       <div className="p-4 border-b border-dark-800 flex items-center justify-between flex-shrink-0">
         <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">Response</span>
         {response && (
-          <div className="flex gap-3 text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${response.statusCode < 400 ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'}`}></div>
-              <span className="font-bold text-dark-200">{response.statusCode} {response.statusText}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${response.statusCode < 400 ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-red-500 shadow-lg shadow-red-500/50'}`}></div>
+                <span className="font-bold text-dark-200">{response.statusCode} {response.statusText}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-dark-400">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{response.responseTime} ms</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 text-dark-400">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{response.responseTime} ms</span>
-            </div>
+            {activeRequest?.id && (
+              <button 
+                onClick={() => setIsSaveModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-primary-600/10 hover:bg-primary-600 text-primary-400 hover:text-white rounded-lg text-[10px] font-bold transition-all border border-primary-500/20"
+              >
+                <Save className="w-3.5 h-3.5" />
+                SAVE LOG
+              </button>
+            )}
           </div>
         )}
       </div>

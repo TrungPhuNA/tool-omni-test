@@ -40,6 +40,7 @@ const environmentRoutes = require('./src/routes/environment.route');
 const scenarioRoutes = require('./src/routes/scenario.route');
 const historyRoutes = require('./src/routes/history.route');
 const loadtestRoutes = require('./src/routes/loadtest.route');
+const exampleRoutes = require('./src/routes/example.route');
 
 // Import Middleware
 const authMiddleware = require('./src/middlewares/auth.middleware');
@@ -55,6 +56,7 @@ app.use('/api/v1/environments', authMiddleware, environmentRoutes);
 app.use('/api/v1/scenarios', authMiddleware, scenarioRoutes);
 app.use('/api/v1/history', authMiddleware, historyRoutes);
 app.use('/api/v1/loadtest', authMiddleware, loadtestRoutes);
+app.use('/api/v1/examples', authMiddleware, exampleRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
