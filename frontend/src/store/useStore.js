@@ -9,6 +9,8 @@ const useStore = create((set, get) => ({
   history: [],
   activeEnvironment: null,
   activeCollection: null,
+  tabs: [],
+  activeTabId: null,
   activeRequest: {
     method: 'GET',
     url: '',
@@ -39,10 +41,100 @@ const useStore = create((set, get) => ({
 
   setCollections: (collections) => set({ collections }),
   setActiveCollection: (activeCollection) => set({ activeCollection }),
-  setActiveRequest: (request) => set({ 
-    activeRequest: { ...get().activeRequest, ...request } 
-  }),
-  setResponse: (response) => set({ response }),
+  
+  setActiveTab: (tabId) => {
+    const { tabs } = get();
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) {
+      set({ 
+        activeTabId: tabId, 
+        activeRequest: tab.request,
+        response: tab.response || null
+      });
+    }
+  },
+
+  addTab: (request = null) => {
+    const { tabs, activeTabId } = get();
+    
+    // Nếu request đã mở trong một tab, switch sang tab đó
+    if (request?.id) {
+      const existingTab = tabs.find(t => t.request.id === request.id);
+      if (existingTab) {
+        get().setActiveTab(existingTab.id);
+        return;
+      }
+    }
+
+    const newId = `tab-${Date.now()}`;
+    const defaultRequest = {
+      method: 'GET',
+      url: '',
+      headers: [],
+      body: '',
+      params: [],
+      authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
+    };
+
+    const newTab = {
+      id: newId,
+      name: request?.name || 'New Request',
+      request: request ? { ...defaultRequest, ...request } : defaultRequest,
+      response: null
+    };
+
+    set({ 
+      tabs: [...tabs, newTab],
+      activeTabId: newId,
+      activeRequest: newTab.request,
+      response: null
+    });
+  },
+
+  closeTab: (tabId) => {
+    const { tabs, activeTabId } = get();
+    const newTabs = tabs.filter(t => t.id !== tabId);
+    
+    if (newTabs.length === 0) {
+      set({ tabs: [], activeTabId: null, activeRequest: null, response: null });
+      return;
+    }
+
+    if (activeTabId === tabId) {
+      const lastTab = newTabs[newTabs.length - 1];
+      set({ 
+        tabs: newTabs, 
+        activeTabId: lastTab.id,
+        activeRequest: lastTab.request,
+        response: lastTab.response || null
+      });
+    } else {
+      set({ tabs: newTabs });
+    }
+  },
+
+  setActiveRequest: (request) => {
+    const { activeTabId, tabs, activeRequest } = get();
+    const updatedRequest = { ...activeRequest, ...request };
+    
+    const newTabs = tabs.map(t => 
+      t.id === activeTabId ? { ...t, request: updatedRequest, name: request.name || t.name } : t
+    );
+
+    set({ 
+      activeRequest: updatedRequest,
+      tabs: newTabs
+    });
+  },
+
+  setResponse: (response) => {
+    const { activeTabId, tabs } = get();
+    const newTabs = tabs.map(t => 
+      t.id === activeTabId ? { ...t, response } : t
+    );
+    set({ response, tabs: newTabs });
+  },
+
   setIsLoading: (isLoading) => set({ isLoading }),
 
   fetchCollections: async () => {
@@ -296,45 +388,47 @@ const useStore = create((set, get) => ({
     }
   },
 
-  addHeader: () => set((state) => ({
-    activeRequest: {
-      ...state.activeRequest,
-      headers: [...state.activeRequest.headers, { key: '', value: '', enabled: true }]
-    }
-  })),
+  addHeader: () => {
+    const { activeRequest, setActiveRequest } = get();
+    setActiveRequest({
+      headers: [...activeRequest.headers, { key: '', value: '', enabled: true }]
+    });
+  },
 
-  updateHeader: (index, field, value) => set((state) => {
-    const headers = [...state.activeRequest.headers];
+  updateHeader: (index, field, value) => {
+    const { activeRequest, setActiveRequest } = get();
+    const headers = [...activeRequest.headers];
     headers[index][field] = value;
-    return { activeRequest: { ...state.activeRequest, headers } };
-  }),
+    setActiveRequest({ headers });
+  },
 
-  removeHeader: (index) => set((state) => ({
-    activeRequest: {
-      ...state.activeRequest,
-      headers: state.activeRequest.headers.filter((_, i) => i !== index)
-    }
-  })),
+  removeHeader: (index) => {
+    const { activeRequest, setActiveRequest } = get();
+    setActiveRequest({
+      headers: activeRequest.headers.filter((_, i) => i !== index)
+    });
+  },
 
-  addParam: () => set((state) => ({
-    activeRequest: {
-      ...state.activeRequest,
-      params: [...state.activeRequest.params, { key: '', value: '', enabled: true }]
-    }
-  })),
+  addParam: () => {
+    const { activeRequest, setActiveRequest } = get();
+    setActiveRequest({
+      params: [...activeRequest.params, { key: '', value: '', enabled: true }]
+    });
+  },
 
-  updateParam: (index, field, value) => set((state) => {
-    const params = [...state.activeRequest.params];
+  updateParam: (index, field, value) => {
+    const { activeRequest, setActiveRequest } = get();
+    const params = [...activeRequest.params];
     params[index][field] = value;
-    return { activeRequest: { ...state.activeRequest, params } };
-  }),
+    setActiveRequest({ params });
+  },
 
-  removeParam: (index) => set((state) => ({
-    activeRequest: {
-      ...state.activeRequest,
-      params: state.activeRequest.params.filter((_, i) => i !== index)
-    }
-  })),
+  removeParam: (index) => {
+    const { activeRequest, setActiveRequest } = get();
+    setActiveRequest({
+      params: activeRequest.params.filter((_, i) => i !== index)
+    });
+  },
 
   executeRequest: async () => {
     const { activeRequest, activeEnvironment, token, setResponse, setIsLoading } = get();

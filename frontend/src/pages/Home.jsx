@@ -4,20 +4,26 @@ import useStore from '../store/useStore';
 import Header from '../components/layout/Header';
 import RequestBuilder from '../components/features/builder/RequestBuilder';
 import ResponsePanel from '../components/features/builder/ResponsePanel';
+import TabBar from '../components/layout/TabBar';
+import { PlusCircle, Zap } from 'lucide-react';
 
 const Home = () => {
     const { showToast } = useOutletContext();
     const {
-        collections,
-        createCollection,
-        saveRequest,
-        environments,
-        activeEnvironment,
-        setActiveEnvironment,
         activeRequest,
         setActiveRequest,
         response,
-        executeRequest
+        isLoading,
+        executeRequest,
+        tabs,
+        activeTabId,
+        addTab,
+        environments,
+        activeEnvironment,
+        setActiveEnvironment,
+        collections,
+        createCollection,
+        saveRequest
     } = useStore();
 
     const [responsePanelWidth, setResponsePanelWidth] = useState(500); // Default width 500px
@@ -78,7 +84,7 @@ const Home = () => {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden bg-dark-950">
             <Header
                 activeRequest={activeRequest}
                 setActiveRequest={setActiveRequest}
@@ -87,26 +93,79 @@ const Home = () => {
                 environments={environments}
                 handleSave={handleSave}
             />
-            <div className="flex-1 flex overflow-hidden relative">
-                <div className="flex-1 overflow-hidden">
-                    <RequestBuilder handleSend={handleSend} />
-                </div>
+            
+            <TabBar />
 
-                <div 
-                    className={`group w-2 cursor-col-resize flex items-center justify-center flex-shrink-0 z-10 relative`}
-                    onMouseDown={startResizing}
-                >
-                    <div className={`h-12 w-1 rounded-full transition-all ${isResizing ? 'bg-primary-500 h-24' : 'bg-dark-700 group-hover:bg-primary-500/50 group-hover:h-16'}`} />
-                    <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
-                </div>
+            {tabs.length > 0 && activeTabId ? (
+                <div className="flex-1 flex overflow-hidden relative">
+                    <div className="flex-1 overflow-hidden">
+                        <RequestBuilder handleSend={handleSend} />
+                    </div>
 
-                <div 
-                    className="flex-shrink-0 bg-dark-950 border-l border-dark-800 overflow-hidden"
-                    style={{ width: `${responsePanelWidth}px` }}
-                >
-                    <ResponsePanel response={response} />
+                    <div 
+                        className={`group w-2 cursor-col-resize flex items-center justify-center flex-shrink-0 z-10 relative`}
+                        onMouseDown={startResizing}
+                    >
+                        <div className={`h-12 w-1 rounded-full transition-all ${isResizing ? 'bg-primary-500 h-24' : 'bg-dark-700 group-hover:bg-primary-500/50 group-hover:h-16'}`} />
+                        <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
+                    </div>
+
+                    <div 
+                        className="flex-shrink-0 bg-dark-950 border-l border-dark-800 overflow-hidden"
+                        style={{ width: `${responsePanelWidth}px` }}
+                    >
+                        <ResponsePanel response={response} isLoading={isLoading} />
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center bg-dark-950 relative overflow-hidden">
+                    {/* Background Decorative Elements */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary-500/5 rounded-full blur-[120px] pointer-events-none" />
+                    <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+                    
+                    <div className="relative z-10 flex flex-col items-center animate-fade-in-up">
+                        <div className="mb-8 relative">
+                            <div className="absolute inset-0 bg-primary-500/20 rounded-3xl blur-2xl animate-pulse" />
+                            <div className="relative bg-dark-900 p-6 rounded-3xl border border-dark-800 shadow-2xl">
+                                <Zap className="w-16 h-16 text-primary-500 fill-primary-500/10" />
+                            </div>
+                        </div>
+                        
+                        <h2 className="text-3xl font-bold text-dark-100 mb-3 tracking-tight">
+                            OmniTest <span className="text-primary-500 text-sm align-top ml-1 font-black">PRO</span>
+                        </h2>
+                        <p className="text-dark-500 text-center max-w-sm mb-10 leading-relaxed font-medium">
+                            Công cụ quản lý và kiểm thử API hiện đại. 
+                            Hãy chọn một API từ Sidebar hoặc tạo tab mới để bắt đầu.
+                        </p>
+                        
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={() => addTab()}
+                                className="bg-primary-600 hover:bg-primary-500 text-white font-bold py-3.5 px-10 rounded-2xl shadow-2xl shadow-primary-900/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+                            >
+                                <PlusCircle className="w-5 h-5" />
+                                Create New Request
+                            </button>
+                        </div>
+
+                        <div className="mt-12 flex items-center gap-8 text-[10px] uppercase font-bold tracking-[0.2em] text-dark-600">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
+                                Multi-Tab Support
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
+                                Real-time Sync
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary-500/50" />
+                                Premium Design
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

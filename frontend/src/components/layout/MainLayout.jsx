@@ -27,7 +27,8 @@ const MainLayout = () => {
         activeScenario,
         setActiveScenario,
         deleteRequest,
-        deleteFolder
+        deleteFolder,
+        addTab
     } = useStore();
 
     const [expandedCollections, setExpandedCollections] = useState({});
@@ -87,7 +88,7 @@ const MainLayout = () => {
     }, [isResizingSidebar]);
 
     const handleImportCurl = (requestData) => {
-        setActiveRequest({
+        addTab({
             id: null,
             collection_id: targetImportColId,
             folder_id: targetImportFolderId,
@@ -167,7 +168,7 @@ const MainLayout = () => {
         const params = typeof req.params === 'string' ? JSON.parse(req.params) : (req.params || []);
         const body = typeof req.body === 'object' ? JSON.stringify(req.body, null, 2) : (req.body || '');
 
-        setActiveRequest({
+        addTab({
             id: req.id,
             collection_id: req.collection_id,
             folder_id: req.folder_id,
