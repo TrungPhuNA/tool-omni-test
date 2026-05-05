@@ -5,7 +5,8 @@ import Header from '../components/layout/Header';
 import RequestBuilder from '../components/features/builder/RequestBuilder';
 import ResponsePanel from '../components/features/builder/ResponsePanel';
 import TabBar from '../components/layout/TabBar';
-import { PlusCircle, Zap } from 'lucide-react';
+import { PlusCircle, Zap, Code2, Info, MessageSquare, ChevronRight } from 'lucide-react';
+import CodeSnippetPanel from '../components/features/builder/CodeSnippetPanel';
 
 const Home = () => {
     const { showToast } = useOutletContext();
@@ -28,6 +29,7 @@ const Home = () => {
 
     const [responsePanelWidth, setResponsePanelWidth] = useState(500); // Default width 500px
     const [isResizing, setIsResizing] = useState(false);
+    const [activeRightTab, setActiveRightTab] = useState(null); // 'snippet', 'info', 'comments'
     const startX = useRef(0);
     const startWidth = useRef(0);
 
@@ -116,6 +118,53 @@ const Home = () => {
                     >
                         <ResponsePanel response={response} isLoading={isLoading} />
                     </div>
+
+                    {/* Right Utility Bar */}
+                    <div className="w-12 bg-dark-900 border-l border-dark-800 flex flex-col items-center py-4 gap-4 z-20">
+                        <button 
+                            onClick={() => setActiveRightTab(activeRightTab === 'snippet' ? null : 'snippet')}
+                            className={`p-2 rounded-lg transition-all ${activeRightTab === 'snippet' ? 'bg-primary-500 text-white' : 'text-dark-500 hover:text-dark-100 hover:bg-dark-800'}`}
+                            title="Code Snippets"
+                        >
+                            <Code2 className="w-5 h-5" />
+                        </button>
+                        <button 
+                            onClick={() => setActiveRightTab(activeRightTab === 'info' ? null : 'info')}
+                            className={`p-2 rounded-lg transition-all ${activeRightTab === 'info' ? 'bg-primary-500 text-white' : 'text-dark-500 hover:text-dark-100 hover:bg-dark-800'}`}
+                            title="Documentation"
+                        >
+                            <Info className="w-5 h-5" />
+                        </button>
+                        <button 
+                            onClick={() => setActiveRightTab(activeRightTab === 'comments' ? null : 'comments')}
+                            className={`p-2 rounded-lg transition-all ${activeRightTab === 'comments' ? 'bg-primary-500 text-white' : 'text-dark-500 hover:text-dark-100 hover:bg-dark-800'}`}
+                            title="Comments"
+                        >
+                            <MessageSquare className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Sliding Right Panels */}
+                    {activeRightTab && (
+                        <div 
+                            className="absolute right-12 top-0 bottom-0 bg-dark-950 border-l border-dark-800 shadow-2xl z-30 animate-slide-in-right"
+                            style={{ width: '400px' }}
+                        >
+                            {activeRightTab === 'snippet' && <CodeSnippetPanel onClose={() => setActiveRightTab(null)} />}
+                            {activeRightTab === 'info' && (
+                                <div className="p-6">
+                                    <h3 className="text-lg font-bold text-dark-100 mb-4">Documentation</h3>
+                                    <p className="text-sm text-dark-400 italic">Tính năng Documentation đang được phát triển...</p>
+                                </div>
+                            )}
+                            {activeRightTab === 'comments' && (
+                                <div className="p-6">
+                                    <h3 className="text-lg font-bold text-dark-100 mb-4">Comments</h3>
+                                    <p className="text-sm text-dark-400 italic">Tính năng Comments đang được phát triển...</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center bg-dark-950 relative overflow-hidden">
