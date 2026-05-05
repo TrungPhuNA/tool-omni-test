@@ -1,9 +1,22 @@
 const axios = require('axios');
+const authAutomator = require('./auth_automator.service');
 
 class ProxyService {
   async executeRequest(config) {
-    const { method, url, headers = {}, body = {}, params = {} } = config;
+    let { method, url, headers = {}, body = {}, params = {}, authConfig } = config;
     
+    // 1. Xử lý Auth Automator nếu có
+    if (authConfig && authConfig.enabled && authConfig.loginUrl) {
+      try {
+        const token = await authAutomator.fetchToken(authConfig);
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (err) {
+        console.warn('Auth Automator failed, proceeding without auto-token:', err.message);
+      }
+    }
+
     const startTime = Date.now();
     try {
       const response = await axios({

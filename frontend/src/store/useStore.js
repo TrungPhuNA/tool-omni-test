@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 
 const useStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
@@ -34,6 +35,56 @@ const useStore = create((set, get) => ({
   }),
   setResponse: (response) => set({ response }),
   setIsLoading: (isLoading) => set({ isLoading }),
+
+  fetchCollections: async () => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      const res = await axios.get(`${API_URL}/collections`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      set({ collections: res.data.data });
+    } catch (err) {
+      console.error('Failed to fetch collections', err);
+    }
+  },
+
+  createCollection: async (name) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      const res = await axios.post(`${API_URL}/collections`, { name }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      // Refresh list from server to be sure
+      await get().fetchCollections();
+      return res.data.data;
+    } catch (err) {
+      console.error('Failed to create collection', err);
+    }
+  },
+
+  saveRequest: async (collectionId, requestData) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      let res;
+      if (requestData.id) {
+        res = await axios.put(`${API_URL}/requests/${requestData.id}`, requestData, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } else {
+        res = await axios.post(`${API_URL}/requests`, { ...requestData, collection_id: collectionId }, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+      // Refresh collections to get updated request list
+      await get().fetchCollections();
+      return res.data.data;
+    } catch (err) {
+      console.error('Failed to save request', err);
+    }
+  },
 
   addHeader: () => set((state) => ({
     activeRequest: {

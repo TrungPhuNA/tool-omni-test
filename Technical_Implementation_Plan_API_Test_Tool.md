@@ -778,3 +778,15 @@ Response: {
 4. **Multi-user:** Tool này chỉ dùng **single-user** (chạy local) hay cần auth/login để nhiều người dùng chung?
 
 5. **Bắt đầu từ Tuần nào?** Bạn muốn bắt tay vào **Tuần 1 (MVP)** ngay bây giờ không?
+
+---
+
+## 🎨 Nguyên tắc thiết kế UX/UI (Bắt buộc)
+
+Dự án cam kết mang lại trải nghiệm Premium, vì vậy cần tuân thủ tuyệt đối các quy tắc sau:
+
+1. **Tuyệt đối không dùng UI mặc định**: Không sử dụng `alert()`, `confirm()`, `prompt()` của trình duyệt. 
+2. **Custom Modal System**: Sử dụng component `Modal.jsx` cho mọi hộp thoại nhập liệu và xác nhận.
+3. **Toast Notification**: Sử dụng hệ thống Toast tùy chỉnh (Success/Error/Warning) với animation mượt mà.
+4. **Animation**: Tận dụng **Framer Motion** cho các tương tác để tạo cảm giác ứng dụng "sống".
+5. **Glassmorphism**: Sử dụng hiệu ứng mờ nền (backdrop-blur) và bo góc lớn cho các khối nổi.
