@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Cpu, Copy } from 'lucide-react';
 
 const ResponsePanel = ({ response, isLoading }) => {
-  const [headersHeight, setHeadersHeight] = useState(192); // Default h-48 = 192px
+  const [bodyHeight, setBodyHeight] = useState(400); // Default body height
   const [isResizing, setIsResizing] = useState(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
@@ -10,19 +10,19 @@ const ResponsePanel = ({ response, isLoading }) => {
   const startResizing = (e) => {
     setIsResizing(true);
     startY.current = e.clientY;
-    startHeight.current = headersHeight;
+    startHeight.current = bodyHeight;
     e.preventDefault();
   };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
-      const delta = startY.current - e.clientY;
+      const delta = e.clientY - startY.current;
       const newHeight = startHeight.current + delta;
       
-      // Giới hạn chiều cao header từ 100px đến 500px
-      if (newHeight > 80 && newHeight < 600) {
-        setHeadersHeight(newHeight);
+      // Giới hạn chiều cao body
+      if (newHeight > 150 && newHeight < 800) {
+        setBodyHeight(newHeight);
       }
     };
 
@@ -70,8 +70,11 @@ const ResponsePanel = ({ response, isLoading }) => {
             <p className="text-sm font-medium">Click "Send" to execute request</p>
           </div>
         ) : (
-          <div className="flex flex-col h-full gap-0">
-            <div className="flex-1 flex flex-col glass-card p-4 overflow-hidden animate-fade-in mb-0">
+          <div className="flex flex-col h-full gap-0 overflow-hidden">
+            <div 
+                className="flex-shrink-0 flex flex-col glass-card p-4 overflow-hidden animate-fade-in mb-0"
+                style={{ height: `${bodyHeight}px` }}
+            >
               <div className="flex items-center justify-between mb-3">
                  <span className="text-xs font-semibold text-dark-400">Body</span>
                  <button className="p-1 hover:bg-dark-800 rounded text-dark-500 transition-colors">
@@ -91,10 +94,7 @@ const ResponsePanel = ({ response, isLoading }) => {
                 <div className="absolute inset-x-0 -top-2 -bottom-2 cursor-row-resize" />
             </div>
 
-            <div 
-                className="glass-card p-4 overflow-hidden animate-fade-in flex-shrink-0"
-                style={{ height: `${headersHeight}px` }}
-            >
+            <div className="flex-1 glass-card p-4 overflow-hidden animate-fade-in min-h-0">
               <span className="text-xs font-semibold text-dark-400 block mb-3">Headers</span>
               <div className="space-y-1.5 overflow-y-auto h-[calc(100%-24px)] text-[11px] font-mono custom-scrollbar">
                 {Object.entries(response.headers).map(([k, v]) => (

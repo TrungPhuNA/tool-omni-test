@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import useStore from '../store/useStore';
 import Header from '../components/layout/Header';
@@ -22,16 +22,21 @@ const Home = () => {
 
     const [responsePanelWidth, setResponsePanelWidth] = useState(500); // Default width 500px
     const [isResizing, setIsResizing] = useState(false);
+    const startX = useRef(0);
+    const startWidth = useRef(0);
 
     const startResizing = (e) => {
         setIsResizing(true);
+        startX.current = e.clientX;
+        startWidth.current = responsePanelWidth;
         e.preventDefault();
     };
 
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (!isResizing) return;
-            const newWidth = window.innerWidth - e.clientX;
+            const delta = startX.current - e.clientX;
+            const newWidth = startWidth.current + delta;
             if (newWidth > 300 && newWidth < window.innerWidth - 400) {
                 setResponsePanelWidth(newWidth);
             }
@@ -44,11 +49,13 @@ const Home = () => {
         if (isResizing) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'col-resize';
         }
 
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'default';
         };
     }, [isResizing]);
 
@@ -86,10 +93,11 @@ const Home = () => {
                 </div>
 
                 <div 
-                    className={`w-1 hover:w-1.5 transition-all cursor-col-resize bg-dark-800 hover:bg-primary-500/50 flex-shrink-0 z-10 ${isResizing ? 'w-1.5 bg-primary-500/50' : ''}`}
+                    className={`group w-2 cursor-col-resize flex items-center justify-center flex-shrink-0 z-10 relative`}
                     onMouseDown={startResizing}
                 >
-                    <div className="absolute inset-y-0 -ml-1 w-3 cursor-col-resize" />
+                    <div className={`h-12 w-1 rounded-full transition-all ${isResizing ? 'bg-primary-500 h-24' : 'bg-dark-700 group-hover:bg-primary-500/50 group-hover:h-16'}`} />
+                    <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
                 </div>
 
                 <div 
