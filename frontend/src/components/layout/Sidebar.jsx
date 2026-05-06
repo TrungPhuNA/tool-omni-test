@@ -20,7 +20,9 @@ import {
     FileText,
     Share2,
     Search,
-    X
+    X,
+    Download,
+    Upload
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
@@ -44,7 +46,12 @@ const Sidebar = ({
     style
 }) => {
     const navigate = useNavigate();
-    const { user, logout, collections, createFolder, deleteFolder, moveRequest, deleteRequest, duplicateRequest, deleteCollection, loadExample, deleteExample } = useStore();
+    const { 
+      user, logout, collections, createFolder, deleteFolder, moveRequest, 
+      deleteRequest, duplicateRequest, deleteCollection, loadExample, 
+      deleteExample, exportCollection, importCollection 
+    } = useStore();
+    const fileInputRef = React.useRef(null);
     const [expandedFolders, setExpandedFolders] = useState({});
     const [expandedRequests, setExpandedRequests] = useState({});
     const [dragOverId, setDragOverId] = useState(null);
@@ -170,11 +177,35 @@ const Sidebar = ({
         });
     };
 
+    const handleImportFile = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const jsonData = JSON.parse(event.target.result);
+                await importCollection(jsonData);
+            } catch (err) {
+                showToast('File JSON không hợp lệ', 'danger');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset
+    };
+
     return (
         <aside
             className="border-r border-dark-800 flex flex-col bg-dark-900/30 backdrop-blur-sm flex-shrink-0"
             style={style}
         >
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleImportFile} 
+                className="hidden" 
+                accept=".json"
+            />
             <div className="p-4 border-b border-dark-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-900/20">
@@ -182,9 +213,18 @@ const Sidebar = ({
                     </div>
                     <h1 className="font-bold text-lg tracking-tight text-dark-100">OmniTest</h1>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="p-1.5 hover:bg-dark-800 rounded-md text-dark-400 transition-colors cursor-pointer" title="Tạo Collection">
-                    <Plus className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="p-1.5 hover:bg-dark-800 rounded-md text-dark-400 transition-colors cursor-pointer" 
+                        title="Import Collection (.json)"
+                    >
+                        <Upload className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setIsModalOpen(true)} className="p-1.5 hover:bg-dark-800 rounded-md text-dark-400 transition-colors cursor-pointer" title="Tạo Collection">
+                        <Plus className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             <div className="px-3 pt-3">
@@ -231,6 +271,16 @@ const Sidebar = ({
                                         <span className="text-sm font-medium text-dark-100 truncate">{col.name}</span>
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                exportCollection(col.id);
+                                            }}
+                                            className="p-1 hover:bg-dark-700 rounded text-dark-400 hover:text-primary-400"
+                                            title="Export Collection (.json)"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();

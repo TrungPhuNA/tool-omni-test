@@ -47,7 +47,80 @@ const useStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    set({ user: null, token: null, environments: [], activeEnvironment: null });
+    set({ user: null, token: null, environments: [], activeEnvironment: null, collections: [], tabs: [], activeTabId: null });
+  },
+
+  exportCollection: (id) => {
+    const col = get().collections.find(c => c.id === id);
+    if (!col) return;
+    
+    // Create a deep copy and clean up sensitive data if needed
+    const exportData = {
+      version: '1.0.0',
+      type: 'collection',
+      timestamp: new Date().toISOString(),
+      data: col
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${col.name.replace(/\s+/g, '_')}.omnitest.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    get().showToast('Đã xuất Collection thành công!');
+  },
+
+  importCollection: async (jsonData) => {
+    try {
+      const { createCollection, createFolder, saveRequest, showToast, fetchCollections } = get();
+      
+      // Support single collection or array of collections
+      const collectionsToImport = Array.isArray(jsonData) ? jsonData : 
+                                   (jsonData.type === 'collection' ? [jsonData.data] : [jsonData]);
+
+      for (const colData of collectionsToImport) {
+        // 1. Create Collection
+        const newCol = await createCollection(colData.name);
+        if (!newCol || !newCol.id) continue;
+        
+        // 2. Import Folders and their requests
+        if (colData.folders && colData.folders.length > 0) {
+          for (const folder of colData.folders) {
+            const folderRes = await createFolder(newCol.id, folder.name);
+            // createFolder returns res.data which is { success, data: { id, ... } }
+            const folderId = folderRes?.data?.id;
+            
+            if (folderId && folder.requests && folder.requests.length > 0) {
+              for (const req of folder.requests) {
+                const { id, ...reqData } = req;
+                await saveRequest(newCol.id, { ...reqData, id: null }, folderId);
+              }
+            }
+          }
+        }
+        
+        // 3. Import Direct Requests (those not in folders)
+        const directRequests = colData.requests?.filter(r => !r.folder_id) || colData.filteredDirectRequests || [];
+        if (directRequests.length > 0) {
+          for (const req of directRequests) {
+            const { id, ...reqData } = req;
+            await saveRequest(newCol.id, { ...reqData, id: null });
+          }
+        }
+      }
+      
+      await fetchCollections();
+      showToast('Import Collection thành công!');
+      return true;
+    } catch (err) {
+      console.error('Import failed', err);
+      get().showToast('Import thất bại: ' + err.message, 'danger');
+      return false;
+    }
   },
 
   setCollections: (collections) => set({ collections }),

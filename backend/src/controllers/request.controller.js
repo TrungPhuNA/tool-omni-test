@@ -30,7 +30,6 @@ class RequestController {
 
     async update(req, res, next) {
         try {
-            console.log('Update Request Body:', JSON.stringify(req.body, null, 2));
             const request = await requestService.update(req.params.id, req.body);
             res.status(200).json({
                 status: 'success',
