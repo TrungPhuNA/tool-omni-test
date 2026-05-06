@@ -113,7 +113,7 @@ const Home = () => {
                     </div>
 
                     <div 
-                        className="flex-shrink-0 bg-dark-950 border-l border-dark-800 overflow-hidden"
+                        className="flex-shrink-0 bg-dark-950 border-l border-dark-800 flex flex-col h-full overflow-hidden"
                         style={{ width: `${responsePanelWidth}px` }}
                     >
                         <ResponsePanel response={response} isLoading={isLoading} />

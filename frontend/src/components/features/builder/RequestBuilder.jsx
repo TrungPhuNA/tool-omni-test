@@ -254,15 +254,16 @@ const RequestBuilder = ({ handleSend }) => {
                   ></textarea>
                 ) : (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-[30px_1fr_1fr_1fr_40px] gap-2 px-2">
+                    <div className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 px-2">
                       <div className=""></div>
+                      <div className="text-[10px] uppercase font-bold text-dark-600 text-center" title="Required">*</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Key</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Value</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Description</div>
                       <div className=""></div>
                     </div>
                     {activeRequest.params.map((p, index) => (
-                      <div key={index} className="grid grid-cols-[30px_1fr_1fr_1fr_40px] gap-2 items-center group animate-fade-in">
+                      <div key={index} className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 items-center group animate-fade-in">
                         <div className="flex justify-center">
                           <input 
                             type="checkbox" 
@@ -271,10 +272,19 @@ const RequestBuilder = ({ handleSend }) => {
                             className="accent-primary-500 w-3.5 h-3.5 cursor-pointer"
                           />
                         </div>
+                        <div className="flex justify-center">
+                          <input 
+                            type="checkbox" 
+                            checked={p.required} 
+                            onChange={(e) => updateParam(index, 'required', e.target.checked)}
+                            className="accent-red-500 w-3 h-3 cursor-pointer"
+                            title="Mark as Required"
+                          />
+                        </div>
                         <input 
                           type="text" 
                           placeholder="Key" 
-                          className="input-field !py-1.5" 
+                          className={`input-field !py-1.5 ${p.required ? 'border-red-500/30' : ''}`} 
                           value={p.key}
                           onChange={(e) => handleRowChange('params', index, 'key', e.target.value)}
                         />
@@ -333,15 +343,16 @@ const RequestBuilder = ({ handleSend }) => {
                   ></textarea>
                 ) : (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-[30px_1fr_1fr_1fr_40px] gap-2 px-2">
+                    <div className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 px-2">
                       <div className=""></div>
+                      <div className="text-[10px] uppercase font-bold text-dark-600 text-center" title="Required">*</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Key</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Value</div>
                       <div className="text-[10px] uppercase font-bold text-dark-600">Description</div>
                       <div className=""></div>
                     </div>
                     {activeRequest.headers.map((h, index) => (
-                      <div key={index} className="grid grid-cols-[30px_1fr_1fr_1fr_40px] gap-2 items-center group animate-fade-in">
+                      <div key={index} className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 items-center group animate-fade-in">
                         <div className="flex justify-center">
                           <input 
                             type="checkbox" 
@@ -350,10 +361,19 @@ const RequestBuilder = ({ handleSend }) => {
                             className="accent-primary-500 w-3.5 h-3.5 cursor-pointer"
                           />
                         </div>
+                        <div className="flex justify-center">
+                          <input 
+                            type="checkbox" 
+                            checked={h.required} 
+                            onChange={(e) => updateHeader(index, 'required', e.target.checked)}
+                            className="accent-red-500 w-3 h-3 cursor-pointer"
+                            title="Mark as Required"
+                          />
+                        </div>
                         <input 
                           type="text" 
                           placeholder="Key" 
-                          className="input-field !py-1.5" 
+                          className={`input-field !py-1.5 ${h.required ? 'border-red-500/30' : ''}`} 
                           value={h.key}
                           onChange={(e) => handleRowChange('headers', index, 'key', e.target.value)}
                         />

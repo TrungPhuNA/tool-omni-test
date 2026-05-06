@@ -52,7 +52,7 @@ const CodeSnippetPanel = ({ onClose }) => {
 
     switch (selectedLang) {
       case 'curl':
-        let curl = `curl --location '${fullUrl}' \\\n--request ${method}`;
+        let curl = `curl --location --globoff '${fullUrl}' \\\n--request ${method}`;
         resolvedHeaders.forEach(h => {
           curl += ` \\\n--header '${h.key}: ${h.value}'`;
         });

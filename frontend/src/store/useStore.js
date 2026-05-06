@@ -138,15 +138,15 @@ const useStore = create((set, get) => ({
         const searchParams = new URLSearchParams(queryString);
         const newParams = [];
         searchParams.forEach((value, key) => {
-          newParams.push({ key, value, description: '', enabled: true });
+          newParams.push({ key, value, description: '', enabled: true, required: false });
         });
         // Giữ lại một dòng trống cuối cùng
-        newParams.push({ key: '', value: '', description: '', enabled: true });
+        newParams.push({ key: '', value: '', description: '', enabled: true, required: false });
         updatedRequest.params = newParams;
       } else {
         // Nếu xóa sạch dấu ?, xóa bảng params (giữ lại 1 dòng trống)
         if (activeRequest.url.includes('?') && !url.includes('?')) {
-           updatedRequest.params = [{ key: '', value: '', description: '', enabled: true }];
+           updatedRequest.params = [{ key: '', value: '', description: '', enabled: true, required: false }];
         }
       }
     } 
@@ -571,7 +571,7 @@ const useStore = create((set, get) => ({
   addHeader: () => {
     const { activeRequest, setActiveRequest } = get();
     setActiveRequest({
-      headers: [...activeRequest.headers, { key: '', value: '', description: '', enabled: true }]
+      headers: [...activeRequest.headers, { key: '', value: '', description: '', enabled: true, required: false }]
     });
   },
 
@@ -599,16 +599,17 @@ const useStore = create((set, get) => ({
           key: key.trim(),
           value: valueParts.join(':').trim(),
           description: '',
-          enabled: true
+          enabled: true,
+          required: false
         };
       });
-    setActiveRequest({ headers: headers.length > 0 ? headers : [{ key: '', value: '', description: '', enabled: true }] });
+    setActiveRequest({ headers: headers.length > 0 ? headers : [{ key: '', value: '', description: '', enabled: true, required: false }] });
   },
 
   addParam: () => {
     const { activeRequest, setActiveRequest } = get();
     setActiveRequest({
-      params: [...activeRequest.params, { key: '', value: '', description: '', enabled: true }]
+      params: [...activeRequest.params, { key: '', value: '', description: '', enabled: true, required: false }]
     });
   },
 
@@ -636,10 +637,11 @@ const useStore = create((set, get) => ({
           key: key.trim(),
           value: valueParts.join(':').trim(),
           description: '',
-          enabled: true
+          enabled: true,
+          required: false
         };
       });
-    setActiveRequest({ params: params.length > 0 ? params : [{ key: '', value: '', description: '', enabled: true }] });
+    setActiveRequest({ params: params.length > 0 ? params : [{ key: '', value: '', description: '', enabled: true, required: false }] });
   },
 
   executeRequest: async () => {
@@ -676,6 +678,13 @@ const useStore = create((set, get) => ({
 
       const result = res.data.data;
       setResponse(result);
+
+      // In logs từ script ra console trình duyệt để user dễ soi
+      if (result.scriptLogs && result.scriptLogs.length > 0) {
+        console.group('%c [OmniScript Console] ', 'background: #0174be; color: #fff; border-radius: 4px; padding: 2px;');
+        result.scriptLogs.forEach(log => console.log(log));
+        console.groupEnd();
+      }
 
       // Nếu script có cập nhật biến môi trường
       if (result.variables && activeEnvironment) {

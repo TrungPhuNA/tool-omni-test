@@ -6,13 +6,14 @@ const vm = require('vm');
 class ProxyService {
   async executeRequest(config) {
     let { method, url, headers = {}, body = {}, params = {}, authConfig, variables = {}, requestId = null, preScript = '', postScript = '' } = config;
+    const scriptLogs = [];
     
     // 0. Chạy Pre-request Script
     if (preScript) {
       variables = this.runScript(preScript, { 
         request: { method, url, headers, body, params },
         variables 
-      });
+      }, scriptLogs);
     }
 
     // 1. Inject biến môi trường vào URL, Headers, Body, Params
@@ -95,7 +96,7 @@ class ProxyService {
         request: { method, url, headers, body, params },
         response: result,
         variables
-      });
+      }, scriptLogs);
     }
 
     // 3. Lưu lịch sử (Background - không chặn response trả về cho user)
@@ -110,11 +111,11 @@ class ProxyService {
       assert_result: null
     }).catch(err => console.error('Lỗi lưu lịch sử:', err));
 
-    return { ...result, variables };
+    return { ...result, variables, scriptLogs };
   }
 
   // Chạy script trong sandbox
-  runScript(script, context) {
+  runScript(script, context, scriptLogs = []) {
     const CryptoJS = require('crypto-js');
     const vars = { ...context.variables };
     const omni = {
@@ -139,21 +140,27 @@ class ProxyService {
           }
         }
       } : null,
-      log: console.log
+      log: (...args) => {
+        const logMsg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+        scriptLogs.push(logMsg);
+        console.log('[Script Log]', logMsg);
+      }
     };
 
     const sandbox = {
       omni: omni,
       pm: omni, // Alias giống Postman
       CryptoJS: CryptoJS, // Tích hợp thư viện crypto
-      console: console
+      console: { log: omni.log }
     };
 
     try {
       vm.createContext(sandbox);
       vm.runInContext(script, sandbox, { timeout: 1000 });
     } catch (err) {
-      console.error('Script execution error:', err.message);
+      const errMsg = `Script Error: ${err.message}`;
+      scriptLogs.push(errMsg);
+      console.error(errMsg);
     }
 
     return vars;
