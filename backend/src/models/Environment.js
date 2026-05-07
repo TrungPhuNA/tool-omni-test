@@ -29,7 +29,15 @@ const Environment = sequelize.define('Environment', {
       return rawValue || {};
     },
     set(value) {
-      this.setDataValue('variables', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('variables', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('variables', value);
+        }
+      } else {
+        this.setDataValue('variables', value);
+      }
     }
   }
 }, {

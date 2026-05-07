@@ -44,7 +44,15 @@ const Request = sequelize.define('Request', {
       return rawValue || [];
     },
     set(value) {
-      this.setDataValue('headers', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('headers', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('headers', value);
+        }
+      } else {
+        this.setDataValue('headers', value);
+      }
     }
   },
   params: {
@@ -59,7 +67,15 @@ const Request = sequelize.define('Request', {
       return rawValue || [];
     },
     set(value) {
-      this.setDataValue('params', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('params', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('params', value);
+        }
+      } else {
+        this.setDataValue('params', value);
+      }
     }
   },
   body: {
@@ -74,7 +90,15 @@ const Request = sequelize.define('Request', {
       return rawValue;
     },
     set(value) {
-      this.setDataValue('body', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('body', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('body', value);
+        }
+      } else {
+        this.setDataValue('body', value);
+      }
     }
   },
   authConfig: {
@@ -90,7 +114,15 @@ const Request = sequelize.define('Request', {
       return rawValue || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' };
     },
     set(value) {
-      this.setDataValue('authConfig', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('authConfig', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('authConfig', value);
+        }
+      } else {
+        this.setDataValue('authConfig', value);
+      }
     }
   },
   assertions: {
@@ -106,7 +138,15 @@ const Request = sequelize.define('Request', {
       return rawValue || [];
     },
     set(value) {
-      this.setDataValue('assertions', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('assertions', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('assertions', value);
+        }
+      } else {
+        this.setDataValue('assertions', value);
+      }
     }
   },
   preScript: {

@@ -45,7 +45,15 @@ const TestHistory = sequelize.define('TestHistory', {
       return rawValue;
     },
     set(value) {
-      this.setDataValue('response', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('response', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('response', value);
+        }
+      } else {
+        this.setDataValue('response', value);
+      }
     }
   },
   assert_result: {
@@ -60,7 +68,15 @@ const TestHistory = sequelize.define('TestHistory', {
       return rawValue || [];
     },
     set(value) {
-      this.setDataValue('assert_result', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('assert_result', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('assert_result', value);
+        }
+      } else {
+        this.setDataValue('assert_result', value);
+      }
     }
   },
   load_summary: {
@@ -75,7 +91,15 @@ const TestHistory = sequelize.define('TestHistory', {
       return rawValue;
     },
     set(value) {
-      this.setDataValue('load_summary', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('load_summary', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('load_summary', value);
+        }
+      } else {
+        this.setDataValue('load_summary', value);
+      }
     }
   }
 }, {

@@ -35,7 +35,15 @@ const Scenario = sequelize.define('Scenario', {
       return rawValue || [];
     },
     set(value) {
-      this.setDataValue('steps', typeof value === 'string' ? JSON.parse(value) : value);
+      if (typeof value === 'string') {
+        try {
+          this.setDataValue('steps', JSON.parse(value));
+        } catch (e) {
+          this.setDataValue('steps', value);
+        }
+      } else {
+        this.setDataValue('steps', value);
+      }
     }
   }
 }, {
