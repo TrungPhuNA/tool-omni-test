@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Plus, Trash2, ShieldCheck, Save } from 'lucide-react';
+import { Play, Plus, Trash2, ShieldCheck, Save, Settings2 } from 'lucide-react';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
 
@@ -8,6 +8,67 @@ const BodyEditor = ({ body, onChange }) => {
     const [isResizing, setIsResizing] = useState(false);
     const startY = useRef(0);
     const startHeight = useRef(0);
+    const [lastJson, setLastJson] = useState(null);
+    const [isSchemaView, setIsSchemaView] = useState(false);
+
+    // Hàm Beautify: Định dạng lại nội dung JSON cho đẹp
+    const handleBeautify = () => {
+        try {
+            const currentBody = typeof body === 'string' ? JSON.parse(body) : body;
+            if (currentBody && typeof currentBody === 'object') {
+                onChange(JSON.stringify(currentBody, null, 2));
+            }
+        } catch (e) {
+            console.warn("Nội dung không phải JSON hợp lệ để Beautify");
+        }
+    };
+
+    // Hàm Schema: Tự động tạo JSON Schema từ body hiện có
+    const handleSchema = () => {
+        try {
+            const currentBodyStr = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+
+            // Nếu đang hiện Schema và có dữ liệu cũ thì quay lại bản cũ
+            if (isSchemaView && lastJson) {
+                onChange(lastJson);
+                setIsSchemaView(false);
+                setLastJson(null);
+                return;
+            }
+
+            const currentBody = JSON.parse(currentBodyStr);
+            
+            // Lưu lại bản gốc trước khi tạo schema
+            setLastJson(currentBodyStr);
+
+            const generateSchema = (obj) => {
+                const type = typeof obj;
+                if (Array.isArray(obj)) {
+                    return { 
+                        type: 'array', 
+                        items: obj.length > 0 ? generateSchema(obj[0]) : {} 
+                    };
+                } else if (obj === null) {
+                    return { type: 'null' };
+                } else if (type === 'object') {
+                    const properties = {};
+                    for (const key in obj) {
+                        properties[key] = generateSchema(obj[key]);
+                    }
+                    return { type: 'object', properties };
+                } else {
+                    return { type };
+                }
+            };
+
+            const schema = generateSchema(currentBody);
+            onChange(JSON.stringify(schema, null, 2));
+            setIsSchemaView(true);
+        } catch (e) {
+            console.warn("Nội dung không phải JSON hợp lệ để tạo Schema");
+        }
+    };
+
 
     const startResizing = (e) => {
         setIsResizing(true);
@@ -47,10 +108,28 @@ const BodyEditor = ({ body, onChange }) => {
 
     return (
         <div id="body-editor-container" className="flex flex-col relative">
-            <div className="flex items-center gap-4 mb-3">
-                <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">JSON Body</span>
-                <div className="flex gap-2">
-                    <span className="px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 text-[10px] font-bold uppercase">JSON</span>
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-4">
+                    <span className="text-[10px] uppercase font-bold text-dark-500 tracking-wider">JSON Body</span>
+                    <div className="flex gap-2">
+                        <span className="px-2 py-0.5 rounded bg-primary-500/20 text-primary-400 text-[10px] font-bold uppercase">JSON</span>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={handleSchema}
+                        className={`flex items-center gap-1.5 text-[11px] font-bold transition-all group px-2 py-1 rounded ${isSchemaView ? 'bg-primary-500/10 text-primary-500' : 'text-dark-400 hover:text-dark-200'}`}
+                    >
+                        <Settings2 className={`w-3.5 h-3.5 ${isSchemaView ? 'text-primary-500' : 'text-dark-500 group-hover:text-dark-300'}`} />
+                        Schema
+                    </button>
+                    <button 
+                        onClick={handleBeautify}
+                        className="text-[11px] font-bold text-primary-500 hover:text-primary-400 transition-colors"
+                    >
+                        Beautify
+                    </button>
                 </div>
             </div>
             <textarea
