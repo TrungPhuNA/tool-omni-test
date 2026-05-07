@@ -476,12 +476,20 @@ const useStore = create((set, get) => ({
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     const token = get().token;
     try {
-      // 1. Tìm source request trong collections có sẵn
+      // 1. Tìm source request trong collections và folders
       let sourceReq = null;
       get().collections.forEach(col => {
-        // Tìm trong requests của collection
+        // Tìm trong requests trực tiếp của collection
         const foundInCol = col.requests?.find(r => r.id === requestId);
         if (foundInCol) sourceReq = foundInCol;
+        
+        // Tìm trong các folders
+        if (!sourceReq) {
+          col.folders?.forEach(f => {
+            const foundInFolder = f.requests?.find(r => r.id === requestId);
+            if (foundInFolder) sourceReq = foundInFolder;
+          });
+        }
       });
 
       if (!sourceReq) return;
@@ -496,6 +504,7 @@ const useStore = create((set, get) => ({
         headers: sourceReq.headers,
         params: sourceReq.params,
         body: sourceReq.body,
+        description: sourceReq.description,
         authConfig: sourceReq.authConfig,
         preScript: sourceReq.preScript,
         postScript: sourceReq.postScript
@@ -506,9 +515,11 @@ const useStore = create((set, get) => ({
       });
       
       await get().fetchCollections();
+      get().showToast(`Đã nhân bản API "${sourceReq.name}"`);
       return true;
     } catch (err) {
       console.error('Failed to duplicate request', err);
+      get().showToast('Nhân bản API thất bại', 'danger');
     }
   },
 

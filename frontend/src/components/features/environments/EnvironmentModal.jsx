@@ -19,6 +19,7 @@ const EnvironmentModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Quản lý Môi trường (Environments)"
+      maxWidth="max-w-2xl"
       footer={(
         <button onClick={onClose} className="btn-secondary py-1.5">Đóng</button>
       )}

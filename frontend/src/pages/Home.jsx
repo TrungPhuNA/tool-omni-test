@@ -9,7 +9,7 @@ import { PlusCircle, Zap, Code2, Info, MessageSquare, ChevronRight } from 'lucid
 import CodeSnippetPanel from '../components/features/builder/CodeSnippetPanel';
 
 const Home = () => {
-    const { showToast } = useOutletContext();
+    const { showToast, setIsEnvModalOpen } = useOutletContext();
     const {
         activeRequest,
         setActiveRequest,
@@ -94,6 +94,7 @@ const Home = () => {
                 setActiveEnvironment={setActiveEnvironment}
                 environments={environments}
                 handleSave={handleSave}
+                setIsEnvModalOpen={setIsEnvModalOpen}
             />
             
             <TabBar />

@@ -41,6 +41,25 @@ const PublicViewPage = () => {
         setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    // Hàm render URL với highlight cho các biến {{variable}}
+    const renderHighlightedUrl = (url) => {
+        if (!url) return null;
+        const parts = url.split(/(\{\{.*?\}\})/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('{{') && part.endsWith('}}')) {
+                return <span key={i} className="text-orange-400 font-black drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]">{part}</span>;
+            }
+            return part;
+        });
+    };
+
+    // Tìm giá trị BASE_URL từ danh sách requests nếu có thể (để hiển thị gợi ý)
+    const getBaseUrlValue = () => {
+        // Thực tế giá trị này nên được cấu hình khi share, 
+        // tạm thời chúng ta hiển thị mô tả biến để người dùng biết cần thay thế gì.
+        return "Địa chỉ máy chủ API của bạn (Ví dụ: http://api.example.com)";
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center gap-4">
@@ -160,6 +179,23 @@ const PublicViewPage = () => {
                                 </span>
                                 <h2 className="text-3xl font-black text-dark-100 tracking-tight">{activeRequest.name}</h2>
                             </div>
+                            
+                            {/* Biến môi trường thông tin ở đầu */}
+                            {activeRequest.url?.includes('{{BASE_URL}}') && (
+                                <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-start gap-4 mb-6">
+                                    <div className="p-2 bg-orange-500/20 rounded-lg shrink-0">
+                                        <Info className="w-5 h-5 text-orange-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-orange-400 mb-1">Cấu hình Base URL</h4>
+                                        <p className="text-xs text-dark-400 leading-relaxed">
+                                            API này sử dụng biến <code className="text-orange-400 font-bold">{"{{BASE_URL}}"}</code>. 
+                                            Giá trị mặc định: <span className="text-dark-200 italic">{getBaseUrlValue()}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <p className="text-dark-400 leading-relaxed text-lg">{activeRequest.description || 'Chưa có mô tả cho API này.'}</p>
                         </div>
 
@@ -170,7 +206,9 @@ const PublicViewPage = () => {
                                 Endpoint
                             </h3>
                             <div className="p-6 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
-                                <code className="text-primary-400 font-mono text-lg break-all">{activeRequest.url}</code>
+                                <code className="text-primary-400 font-mono text-lg break-all">
+                                    {renderHighlightedUrl(activeRequest.url)}
+                                </code>
                                 <button
                                     onClick={() => {
                                         navigator.clipboard.writeText(activeRequest.url);
@@ -201,7 +239,9 @@ const PublicViewPage = () => {
                                                 <tbody className="divide-y divide-dark-800">
                                                     {activeRequest.params.map((p, idx) => (
                                                         <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">{p.key}</td>
+                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">
+                                                                {renderHighlightedUrl(p.key)}
+                                                            </td>
                                                             <td className="px-6 py-4">
                                                                 {p.enabled ? (
                                                                     <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-bold">Bắt buộc</span>
@@ -233,8 +273,12 @@ const PublicViewPage = () => {
                                                 <tbody className="divide-y divide-dark-800">
                                                     {activeRequest.headers.map((h, idx) => (
                                                         <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">{h.key}</td>
-                                                            <td className="px-6 py-4 font-mono text-xs text-dark-300">{h.value}</td>
+                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">
+                                                                {renderHighlightedUrl(h.key)}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-mono text-xs text-dark-300">
+                                                                {renderHighlightedUrl(h.value)}
+                                                            </td>
                                                             <td className="px-6 py-4 text-xs text-dark-400">{h.description || '-'}</td>
                                                         </tr>
                                                     ))}

@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, footer }) => {
+const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-lg' }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -18,7 +18,7 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden"
+            className={`relative w-full ${maxWidth} bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden`}
           >
             <div className="flex items-center justify-between p-6 border-b border-dark-800">
               <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
