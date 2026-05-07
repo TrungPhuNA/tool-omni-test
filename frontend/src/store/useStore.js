@@ -26,6 +26,7 @@ const useStore = create((set, get) => ({
         },
         preScript: '',
         postScript: '',
+        documentation: '',
         description: ''
     },
     response: null,
@@ -161,6 +162,7 @@ const useStore = create((set, get) => ({
             authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
             preScript: '',
             postScript: '',
+            documentation: '',
             description: ''
         };
 
@@ -541,6 +543,7 @@ const useStore = create((set, get) => ({
                 params: sourceReq.params,
                 body: sourceReq.body,
                 description: sourceReq.description,
+                documentation: sourceReq.documentation,
                 authConfig: sourceReq.authConfig,
                 preScript: sourceReq.preScript,
                 postScript: sourceReq.postScript

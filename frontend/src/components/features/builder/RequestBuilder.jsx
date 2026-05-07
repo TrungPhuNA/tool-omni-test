@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Plus, Trash2, ShieldCheck, Save, Settings2 } from 'lucide-react';
+import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info } from 'lucide-react';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
 
@@ -191,7 +191,276 @@ const BodyEditor = ({ body, onChange }) => {
                 onMouseDown={startResizing}
             >
                 <div className={`w-12 h-1 rounded-full transition-all ${isResizing ? 'bg-primary-500 w-24' : 'bg-dark-700 group-hover:bg-primary-500/50 group-hover:w-16'}`} />
-                <div className="absolute inset-x-0 -top-2 -bottom-2 cursor-row-resize" />
+            </div>
+        </div>
+    );
+};
+
+const DocsTab = ({ request, onChange }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    
+    const enabledParams = request.params?.filter(p => p.key && p.enabled) || [];
+    const enabledHeaders = request.headers?.filter(h => h.key && h.enabled) || [];
+
+    const renderMarkdown = (text) => {
+        if (!text) return '';
+        let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        return html
+            .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-dark-100 mt-6 mb-2">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-dark-100 mt-8 mb-4 border-b border-dark-800 pb-2">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-dark-100 mt-10 mb-6">$1</h1>')
+            .replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc text-dark-300 mb-1">$1</li>')
+            .replace(/\*\*(.*)\*\*/gim, '<strong class="text-primary-400">$1</strong>')
+            .replace(/\*(.*)\*/gim, '<em class="text-dark-500">$1</em>')
+            .replace(/`([^`]+)`/gim, '<code class="bg-dark-800 px-1.5 py-0.5 rounded text-primary-300 font-mono text-xs">$1</code>')
+            .replace(/\n/gim, '<div class="h-1"></div>');
+    };
+
+    const handleUpdateHeaderDesc = (index, desc) => {
+        const newHeaders = [...request.headers];
+        newHeaders[index].description = desc;
+        onChange({ headers: newHeaders });
+    };
+
+    const handleUpdateHeaderRequired = (index, required) => {
+        const newHeaders = [...request.headers];
+        newHeaders[index].required = required;
+        onChange({ headers: newHeaders });
+    };
+
+    const handleUpdateParamDesc = (index, desc) => {
+        const newParams = [...request.params];
+        newParams[index].description = desc;
+        onChange({ params: newParams });
+    };
+
+    const handleUpdateParamRequired = (index, required) => {
+        const newParams = [...request.params];
+        newParams[index].required = required;
+        onChange({ params: newParams });
+    };
+    
+    return (
+        <div className="flex flex-col h-full animate-fade-in pr-2">
+            <div className="flex items-center justify-between mb-6">
+                <div className="space-y-1">
+                    <h2 className="text-2xl font-bold text-dark-100 flex items-center gap-3">
+                        {request.name || 'API Documentation'}
+                        {!isEditing && <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black tracking-widest uppercase border border-green-500/20">Published</span>}
+                    </h2>
+                    <p className="text-[10px] text-dark-500 font-medium uppercase tracking-wider italic">Trình chỉnh sửa tài liệu tích hợp toàn diện</p>
+                </div>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setIsEditing(!isEditing)}
+                        className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight px-4 py-2 rounded-xl transition-all shadow-lg ${
+                            isEditing ? 'bg-green-600 text-white shadow-green-900/20' : 'bg-dark-800 text-dark-200 hover:bg-dark-700'
+                        }`}
+                    >
+                        {isEditing ? (
+                            <><Check className="w-3.5 h-3.5" /> Finish & Save All</>
+                        ) : (
+                            <><Edit3 className="w-3.5 h-3.5" /> Edit Documentation</>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 space-y-10 pb-10">
+                {/* 1. Main Documentation (Markdown) */}
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                        Introduction & Usage
+                    </h3>
+                    {isEditing ? (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-4 px-3 py-2 bg-dark-900/50 rounded-t-xl border-x border-t border-dark-700">
+                                <span className="text-[9px] font-black text-dark-500 uppercase tracking-widest">Markdown Editor</span>
+                                <div className="h-4 w-px bg-dark-800"></div>
+                                <div className="flex gap-4">
+                                    <button onClick={() => onChange({ documentation: (request.documentation || '') + '\n# ' })} className="text-[10px] text-dark-400 hover:text-primary-500 font-bold">H1</button>
+                                    <button onClick={() => onChange({ documentation: (request.documentation || '') + '\n## ' })} className="text-[10px] text-dark-400 hover:text-primary-500 font-bold">H2</button>
+                                    <button onClick={() => onChange({ documentation: (request.documentation || '') + '\n**text**' })} className="text-[10px] text-dark-400 hover:text-primary-500 font-bold underline">B</button>
+                                    <button onClick={() => onChange({ documentation: (request.documentation || '') + '\n- ' })} className="text-[10px] text-dark-400 hover:text-primary-500 font-bold">List</button>
+                                </div>
+                            </div>
+                            <textarea
+                                className="w-full bg-dark-900/30 border border-dark-700 rounded-b-xl p-6 outline-none focus:ring-2 focus:ring-primary-500/30 text-sm font-sans leading-relaxed transition-all text-dark-200 min-h-[250px] custom-scrollbar shadow-inner"
+                                placeholder="Viết hướng dẫn chi tiết tại đây..."
+                                value={request.documentation || ''}
+                                onChange={(e) => onChange({ documentation: e.target.value })}
+                            />
+                        </div>
+                    ) : (
+                        <div className="relative bg-dark-900/40 p-8 rounded-2xl border border-dark-800/50 shadow-inner">
+                            {request.documentation ? (
+                                <div 
+                                    className="prose prose-invert prose-sm max-w-none text-dark-300 leading-7"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(request.documentation) }}
+                                />
+                            ) : (
+                                <p className="text-sm text-dark-500 italic text-center py-4">Chưa có nội dung giới thiệu.</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="h-px bg-dark-800/30" />
+
+                {/* 2. Endpoint Information */}
+                <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                        Endpoint Detail
+                    </h3>
+                    <div className="flex items-center gap-4 p-5 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-sm shadow-inner group">
+                        <span className={`px-3 py-1 rounded-lg text-[11px] font-black tracking-widest ${
+                            request.method === 'GET' ? 'bg-green-500/10 text-green-500' :
+                            request.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                        }`}>{request.method}</span>
+                        <span className="text-dark-200 break-all">{request.url || 'No URL'}</span>
+                    </div>
+                </div>
+
+                {/* 3. Headers Table */}
+                {enabledHeaders.length > 0 && (
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                            Headers Documentation
+                        </h3>
+                        <div className="overflow-hidden border border-dark-800 rounded-2xl bg-dark-900/30">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-dark-800/50 text-dark-500 text-[9px] uppercase font-black tracking-wider">
+                                    <tr>
+                                        <th className="px-5 py-3">Key</th>
+                                        <th className="px-5 py-3">Value</th>
+                                        <th className="px-5 py-3 text-center">Required</th>
+                                        <th className="px-5 py-3">Description / Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-dark-200">
+                                    {request.headers.map((h, i) => h.enabled && h.key && (
+                                        <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
+                                            <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{h.key}</td>
+                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400">{h.value}</td>
+                                            <td className="px-5 py-4 text-center">
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="w-4 h-4 accent-red-500 cursor-pointer"
+                                                        checked={h.required}
+                                                        onChange={(e) => handleUpdateHeaderRequired(i, e.target.checked)}
+                                                    />
+                                                ) : (
+                                                    h.required ? 
+                                                        <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-tighter border border-red-500/20">Required</span> : 
+                                                        <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-600 text-[9px] font-black uppercase tracking-tighter border border-dark-700">Optional</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="text"
+                                                        className="w-full bg-dark-800/50 border border-dark-700 rounded-lg px-3 py-1.5 text-xs text-dark-100 outline-none focus:ring-1 focus:ring-primary-500/50"
+                                                        placeholder="Giải thích header này..."
+                                                        value={h.description || ''}
+                                                        onChange={(e) => handleUpdateHeaderDesc(i, e.target.value)}
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-dark-500 italic">{h.description || '-'}</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. Params Table */}
+                {enabledParams.length > 0 && (
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                            Parameters Documentation
+                        </h3>
+                        <div className="overflow-hidden border border-dark-800 rounded-2xl bg-dark-900/30">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-dark-800/50 text-dark-500 text-[9px] uppercase font-black tracking-wider">
+                                    <tr>
+                                        <th className="px-5 py-3">Parameter</th>
+                                        <th className="px-5 py-3">Value</th>
+                                        <th className="px-5 py-3 text-center">Required</th>
+                                        <th className="px-5 py-3">Description / Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-dark-200">
+                                    {request.params.map((p, i) => p.enabled && p.key && (
+                                        <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
+                                            <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
+                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400">{p.value}</td>
+                                            <td className="px-5 py-4 text-center">
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="w-4 h-4 accent-red-500 cursor-pointer"
+                                                        checked={p.required}
+                                                        onChange={(e) => handleUpdateParamRequired(i, e.target.checked)}
+                                                    />
+                                                ) : (
+                                                    p.required ? 
+                                                        <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-tighter border border-red-500/20">Required</span> : 
+                                                        <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-600 text-[9px] font-black uppercase tracking-tighter border border-dark-700">Optional</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="text"
+                                                        className="w-full bg-dark-800/50 border border-dark-700 rounded-lg px-3 py-1.5 text-xs text-dark-100 outline-none focus:ring-1 focus:ring-primary-500/50"
+                                                        placeholder="Giải thích tham số này..."
+                                                        value={p.description || ''}
+                                                        onChange={(e) => handleUpdateParamDesc(i, e.target.value)}
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-dark-500 italic">{p.description || '-'}</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                
+                {/* 5. Request Body */}
+                {request.body && (
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                            Request Body JSON
+                        </h3>
+                        <div className="relative group">
+                            {isEditing ? (
+                                <textarea
+                                    className="w-full bg-dark-950/50 border border-dark-800 rounded-2xl p-6 font-mono text-[12px] text-emerald-400 outline-none focus:ring-2 focus:ring-primary-500/30 min-h-[200px] custom-scrollbar shadow-inner"
+                                    value={typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)}
+                                    onChange={(e) => onChange({ body: e.target.value })}
+                                />
+                            ) : (
+                                <pre className="p-6 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-[12px] text-emerald-400 overflow-auto shadow-inner custom-scrollbar max-h-[400px]">
+                                    {typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)}
+                                </pre>
+                            )}
+                            <div className="absolute top-4 right-4 text-[9px] text-dark-600 font-bold uppercase tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">JSON</div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -327,9 +596,9 @@ const RequestBuilder = ({ handleSend }) => {
             </div>
 
             {/* Request Tabs */}
-            <div className="glass-card flex-1 flex flex-col overflow-hidden">
+            <div className="glass-card flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex border-b border-dark-800 p-1 gap-1">
-                    {['params', 'headers', 'body', 'auth', 'scripts', 'assertions', 'examples'].map((tab) => (
+                    {['docs', 'params', 'headers', 'body', 'auth', 'scripts', 'assertions', 'examples'].map((tab) => (
                         <button
                             key={tab}
                             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${activeTab === tab
@@ -343,7 +612,8 @@ const RequestBuilder = ({ handleSend }) => {
                     ))}
                 </div>
 
-                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 min-h-0">
+                    {activeTab === 'docs' && <DocsTab request={activeRequest} onChange={(val) => setActiveRequest(val)} />}
                     {activeTab === 'params' && (
                         <div className="space-y-3 animate-fade-in">
                             <div className="flex items-center justify-between mb-2">

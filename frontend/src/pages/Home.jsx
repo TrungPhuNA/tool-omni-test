@@ -101,7 +101,7 @@ const Home = () => {
 
             {tabs.length > 0 && activeTabId ? (
                 <div className="flex-1 flex overflow-hidden relative">
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 flex flex-col overflow-hidden">
                         <RequestBuilder handleSend={handleSend} />
                     </div>
 

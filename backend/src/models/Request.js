@@ -35,7 +35,12 @@ const Request = sequelize.define('Request', {
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Mô tả chi tiết cho API'
+    comment: 'Mô tả ngắn cho API'
+  },
+  documentation: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Tài liệu hướng dẫn chi tiết (Markdown)'
   },
   headers: {
     type: DataTypes.JSON,
