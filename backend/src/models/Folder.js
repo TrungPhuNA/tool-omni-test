@@ -19,6 +19,11 @@ const Folder = sequelize.define('Folder', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  parent_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID của thư mục cha (cho lồng nhau)'
+  },
   order: {
     type: DataTypes.INTEGER,
     defaultValue: 0

@@ -29,10 +29,14 @@ class CollectionRepository {
         { 
           model: Folder, 
           as: 'folders',
+          separate: true,
+          order: [['order', 'ASC']],
           include: [
             { 
               model: Request, 
               as: 'requests',
+              separate: true,
+              order: [['order', 'ASC']],
               include: [{ model: RequestExample, as: 'examples' }]
             }
           ]
@@ -42,6 +46,8 @@ class CollectionRepository {
           as: 'requests',
           where: { folder_id: null },
           required: false,
+          separate: true,
+          order: [['order', 'ASC']],
           include: [{ model: RequestExample, as: 'examples' }]
         },
         { model: Scenario, as: 'scenarios' },
@@ -59,10 +65,14 @@ class CollectionRepository {
         { 
           model: Folder, 
           as: 'folders',
+          separate: true,
+          order: [['order', 'ASC']],
           include: [
             { 
               model: Request, 
               as: 'requests',
+              separate: true,
+              order: [['order', 'ASC']],
               include: [{ model: RequestExample, as: 'examples' }]
             }
           ]
@@ -72,6 +82,8 @@ class CollectionRepository {
           as: 'requests',
           where: { folder_id: null },
           required: false,
+          separate: true,
+          order: [['order', 'ASC']],
           include: [{ model: RequestExample, as: 'examples' }]
         },
         { model: Scenario, as: 'scenarios' },

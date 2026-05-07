@@ -39,6 +39,7 @@ const MainLayout = () => {
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [targetColId, setTargetColId] = useState(null);
+    const [targetParentId, setTargetParentId] = useState(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [targetImportColId, setTargetImportColId] = useState(null);
     const [targetImportFolderId, setTargetImportFolderId] = useState(null);
@@ -52,11 +53,28 @@ const MainLayout = () => {
         type: 'danger' 
     });
 
+    const targetParentName = React.useMemo(() => {
+        if (!targetParentId) return null;
+        for (const col of collections) {
+            const findFolder = (folders) => {
+                for (const f of folders) {
+                    if (f.id === targetParentId) return f.name;
+                    const sub = findFolder(f.subFolders || []);
+                    if (sub) return sub;
+                }
+                return null;
+            };
+            const name = findFolder(col.folders || []);
+            if (name) return name;
+        }
+        return null;
+    }, [targetParentId, collections]);
+
     const openConfirm = (data) => {
         setConfirmData({ ...data, isOpen: true });
     };
 
-    const [sidebarWidth, setSidebarWidth] = useState(288); // Default width 288px (w-72)
+    const [sidebarWidth, setSidebarWidth] = useState(380); // Độ rộng Sidebar rộng rãi theo yêu cầu
     const [isResizingSidebar, setIsResizingSidebar] = useState(false);
 
     const startResizingSidebar = (e) => {
@@ -128,8 +146,9 @@ const MainLayout = () => {
 
     const handleCreateFolder = async () => {
         if (newFolderName && targetColId) {
-            await createFolder(targetColId, newFolderName);
+            await createFolder(targetColId, newFolderName, targetParentId);
             setNewFolderName('');
+            setTargetParentId(null);
             setIsFolderModalOpen(false);
             showToast('Đã tạo thư mục mới!');
         }
@@ -210,8 +229,9 @@ const MainLayout = () => {
                 activeScenario={activeScenario}
                 viewMode={viewMode}
                 setIsModalOpen={setIsModalOpen}
-                setIsFolderModalOpen={(colId) => {
+                setIsFolderModalOpen={(colId, parentId = null) => {
                     setTargetColId(colId);
+                    setTargetParentId(parentId);
                     setIsFolderModalOpen(true);
                 }}
                 setIsImportModalOpen={(colId, folderId = null) => {
@@ -250,6 +270,7 @@ const MainLayout = () => {
                 folderName={newFolderName}
                 setFolderName={setNewFolderName}
                 handleCreateFolder={handleCreateFolder}
+                parentName={targetParentName}
             />
 
             <ImportCurlModal

@@ -32,6 +32,14 @@ class RequestService {
     }
     return true;
   }
+
+  async reorder(items) {
+    if (!Array.isArray(items)) return false;
+    for (const item of items) {
+      await requestRepository.update(item.id, { order: item.order });
+    }
+    return true;
+  }
 }
 
 module.exports = new RequestService();

@@ -269,30 +269,39 @@ const useStore = create((set, get) => ({
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      const mappedCollections = res.data.data.map(col => ({
-        ...col,
-        requests: (col.requests || []).map(req => {
-          const mapped = {
+      const mappedCollections = res.data.data.map(col => {
+        // 1. Map all requests first with scripts/auth
+        const allRequests = (col.folders || []).flatMap(f => f.requests || [])
+          .concat(col.requests || [])
+          .map(req => ({
             ...req,
             preScript: req.preScript || req.pre_script || '',
             postScript: req.postScript || req.post_script || '',
             authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
-          };
-          return mapped;
-        }),
-        folders: (col.folders || []).map(folder => ({
-          ...folder,
-          requests: (folder.requests || []).map(req => {
-            const mapped = {
-              ...req,
-              preScript: req.preScript || req.pre_script || '',
-              postScript: req.postScript || req.post_script || '',
-              authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
-            };
-            return mapped;
-          })
-        }))
-      }));
+          }));
+
+        // 2. Build recursive folder tree
+        const buildTree = (folders, parentId = null) => {
+          return folders
+            .filter(f => f.parent_id === parentId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .map(folder => ({
+              ...folder,
+              requests: allRequests
+                .filter(r => r.folder_id === folder.id)
+                .sort((a, b) => (a.order || 0) - (b.order || 0)),
+              subFolders: buildTree(folders, folder.id)
+            }));
+        };
+
+        return {
+          ...col,
+          requests: allRequests
+            .filter(r => !r.folder_id)
+            .sort((a, b) => (a.order || 0) - (b.order || 0)),
+          folders: buildTree(col.folders || [])
+        };
+      });
 
       set({ 
         collections: mappedCollections,
@@ -360,13 +369,14 @@ const useStore = create((set, get) => ({
     }
   },
 
-  createFolder: async (collectionId, name) => {
+  createFolder: async (collectionId, name, parentId = null) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
     const token = get().token;
     try {
       const res = await axios.post(`${API_URL}/folders`, { 
         collection_id: collectionId, 
-        name 
+        name,
+        parent_id: parentId
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -454,6 +464,32 @@ const useStore = create((set, get) => ({
     } catch (err) {
       console.error('Failed to move request', err);
       return false;
+    }
+  },
+
+  reorderRequests: async (items) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.put(`${API_URL}/requests/reorder`, { items }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+    } catch (err) {
+      console.error('Failed to reorder requests', err);
+    }
+  },
+
+  reorderFolders: async (items) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+    const token = get().token;
+    try {
+      await axios.put(`${API_URL}/folders/reorder`, { items }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      await get().fetchCollections();
+    } catch (err) {
+      console.error('Failed to reorder folders', err);
     }
   },
 

@@ -192,6 +192,11 @@ const Request = sequelize.define('Request', {
     allowNull: true,
     field: 'post_script',
     comment: 'Javascript chạy sau khi nhận kết quả'
+  },
+  order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Thứ tự sắp xếp'
   }
 }, {
   tableName: 'requests',

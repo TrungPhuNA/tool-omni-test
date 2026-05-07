@@ -21,6 +21,14 @@ class FolderService {
     return true;
   }
 
+  async reorder(items) {
+    if (!Array.isArray(items)) return false;
+    for (const item of items) {
+      await folderRepository.update(item.id, { order: item.order });
+    }
+    return true;
+  }
+
   async getById(id) {
     const folder = await folderRepository.findByPk(id);
     if (!folder) {

@@ -3,6 +3,7 @@ const router = express.Router();
 const requestController = require('../controllers/request.controller');
 
 router.get('/collection/:collectionId', requestController.getByCollectionId);
+router.put('/reorder', requestController.reorder);
 router.post('/', requestController.create);
 router.put('/:id', requestController.update);
 router.delete('/:id', requestController.delete);

@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from '../../common/Modal';
 
-const FolderModal = ({ isOpen, onClose, folderName, setFolderName, handleCreateFolder }) => {
+const FolderModal = ({ isOpen, onClose, folderName, setFolderName, handleCreateFolder, parentName }) => {
   return (
     <Modal 
       isOpen={isOpen} 
@@ -26,6 +26,12 @@ const FolderModal = ({ isOpen, onClose, folderName, setFolderName, handleCreateF
             onChange={(e) => setFolderName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
           />
+          {parentName && (
+            <div className="flex items-center gap-1.5 mt-1.5 px-2 py-1 bg-primary-500/10 rounded border border-primary-500/20 w-fit">
+               <span className="text-[10px] text-primary-400 font-medium">Thư mục cha:</span>
+               <span className="text-[10px] text-primary-200 font-bold">{parentName}</span>
+            </div>
+          )}
         </div>
         <p className="text-xs text-dark-500 leading-relaxed">
           Thư mục giúp bạn phân loại các API bên trong một Collection một cách khoa học hơn.

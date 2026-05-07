@@ -53,6 +53,19 @@ class FolderController {
             next(error);
         }
     }
+
+    async reorder(req, res, next) {
+        try {
+            await folderService.reorder(req.body.items);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                message: 'Cập nhật thứ tự thư mục thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 module.exports = new FolderController();

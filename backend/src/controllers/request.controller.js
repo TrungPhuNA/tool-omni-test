@@ -67,6 +67,19 @@ class RequestController {
             next(error);
         }
     }
+
+    async reorder(req, res, next) {
+        try {
+            await requestService.reorder(req.body.items);
+            res.status(200).json({
+                status: 'success',
+                code: 'SUCCESS',
+                message: 'Cập nhật thứ tự API thành công'
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 module.exports = new RequestController();
