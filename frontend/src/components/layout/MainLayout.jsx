@@ -101,7 +101,8 @@ const MainLayout = () => {
             body: requestData.body,
             authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
             preScript: '',
-            postScript: ''
+            postScript: '',
+            description: ''
         });
         navigate('/');
     };
@@ -179,7 +180,8 @@ const MainLayout = () => {
             body: body,
             authConfig: req.authConfig || req.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
             preScript: req.preScript || req.pre_script || '',
-            postScript: req.postScript || req.post_script || ''
+            postScript: req.postScript || req.post_script || '',
+            description: req.description || ''
         });
         navigate('/');
     };

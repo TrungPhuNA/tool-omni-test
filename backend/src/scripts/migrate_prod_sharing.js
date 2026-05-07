@@ -30,6 +30,22 @@ async function migrate() {
         });
         console.log('   -> Success: collection_id is now nullable.');
 
+        // 3. Thêm cột description vào bảng requests
+        console.log('3. Checking description column in requests table...');
+        const requestTableInfo = await queryInterface.describeTable('requests');
+        if (!requestTableInfo.description) {
+            console.log('   -> Adding description column to requests...');
+            await queryInterface.addColumn('requests', 'description', {
+                type: DataTypes.TEXT,
+                allowNull: true,
+                after: 'url',
+                comment: 'Mô tả chi tiết cho API'
+            });
+            console.log('   -> Success: description added.');
+        } else {
+            console.log('   -> Column description already exists.');
+        }
+
         console.log('--- MIGRATION COMPLETED SUCCESSFULLY ---');
         process.exit(0);
     } catch (err) {

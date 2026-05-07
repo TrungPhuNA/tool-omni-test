@@ -32,6 +32,11 @@ const Request = sequelize.define('Request', {
     allowNull: false,
     comment: 'URL đầy đủ hoặc có biến {{BASE_URL}}/path'
   },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Mô tả chi tiết cho API'
+  },
   headers: {
     type: DataTypes.JSON,
     allowNull: true,

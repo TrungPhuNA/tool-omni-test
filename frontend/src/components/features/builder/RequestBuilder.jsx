@@ -190,6 +190,17 @@ const RequestBuilder = ({ handleSend }) => {
                 </button>
             </div>
 
+            {/* API Description Area */}
+            <div className="px-1">
+                <input
+                    type="text"
+                    className="w-full bg-transparent border-b border-dark-800 focus:border-primary-500/50 py-1 px-2 text-[11px] text-dark-400 outline-none transition-all placeholder:italic"
+                    placeholder="Thêm mô tả ngắn cho API này (ví dụ: API lấy danh sách người dùng)..."
+                    value={activeRequest.description || ''}
+                    onChange={(e) => setActiveRequest({ description: e.target.value })}
+                />
+            </div>
+
             {/* Request Tabs */}
             <div className="glass-card flex-1 flex flex-col overflow-hidden">
                 <div className="flex border-b border-dark-800 p-1 gap-1">
@@ -197,8 +208,8 @@ const RequestBuilder = ({ handleSend }) => {
                         <button
                             key={tab}
                             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all ${activeTab === tab
-                                    ? 'bg-dark-800 text-primary-400'
-                                    : 'text-dark-500 hover:text-dark-200 hover:bg-dark-800/50'
+                                ? 'bg-dark-800 text-primary-400'
+                                : 'text-dark-500 hover:text-dark-200 hover:bg-dark-800/50'
                                 }`}
                             onClick={() => setActiveTab(tab)}
                         >
@@ -397,7 +408,7 @@ const RequestBuilder = ({ handleSend }) => {
                                         <div className="flex flex-col gap-1 min-w-0 flex-1 cursor-pointer" onClick={() => loadExample(ex)}>
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${ex.method === 'GET' ? 'bg-green-500/10 text-green-500' :
-                                                        ex.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                                                    ex.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
                                                     }`}>{ex.method}</span>
                                                 <span className="text-sm font-bold text-dark-100 truncate">{ex.name}</span>
                                             </div>

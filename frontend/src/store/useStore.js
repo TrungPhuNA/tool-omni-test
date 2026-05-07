@@ -25,7 +25,8 @@ const useStore = create((set, get) => ({
       tokenPath: 'data.token'
     },
     preScript: '',
-    postScript: ''
+    postScript: '',
+    description: ''
   },
   response: null,
   isLoading: false,
@@ -159,7 +160,8 @@ const useStore = create((set, get) => ({
       params: [],
       authConfig: { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' },
       preScript: '',
-      postScript: ''
+      postScript: '',
+      description: ''
     };
 
     const newTab = {
