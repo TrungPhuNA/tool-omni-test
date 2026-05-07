@@ -27,15 +27,78 @@ const RequestExample = sequelize.define('RequestExample', {
   },
   headers: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true,
+    get() {
+      let value = this.getDataValue('headers');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || [];
+        }
+      }
+      return value || [];
+    },
+    set(value) {
+      if (typeof value === 'string') {
+        try { this.setDataValue('headers', JSON.parse(value)); } catch (e) { this.setDataValue('headers', value); }
+      } else { this.setDataValue('headers', value); }
+    }
   },
   params: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true,
+    get() {
+      let value = this.getDataValue('params');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || [];
+        }
+      }
+      return value || [];
+    },
+    set(value) {
+      if (typeof value === 'string') {
+        try { this.setDataValue('params', JSON.parse(value)); } catch (e) { this.setDataValue('params', value); }
+      } else { this.setDataValue('params', value); }
+    }
   },
   body: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true,
+    get() {
+      let value = this.getDataValue('body');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value;
+        }
+      }
+      return value;
+    },
+    set(value) {
+      if (typeof value === 'string') {
+        try { this.setDataValue('body', JSON.parse(value)); } catch (e) { this.setDataValue('body', value); }
+      } else { this.setDataValue('body', value); }
+    }
   },
   response_status: {
     type: DataTypes.INTEGER,
@@ -43,11 +106,53 @@ const RequestExample = sequelize.define('RequestExample', {
   },
   response_body: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true,
+    get() {
+      let value = this.getDataValue('response_body');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value;
+        }
+      }
+      return value;
+    },
+    set(value) {
+      if (typeof value === 'string') {
+        try { this.setDataValue('response_body', JSON.parse(value)); } catch (e) { this.setDataValue('response_body', value); }
+      } else { this.setDataValue('response_body', value); }
+    }
   },
   response_headers: {
     type: DataTypes.JSON,
-    allowNull: true
+    allowNull: true,
+    get() {
+      let value = this.getDataValue('response_headers');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || {};
+        }
+      }
+      return value || {};
+    },
+    set(value) {
+      if (typeof value === 'string') {
+        try { this.setDataValue('response_headers', JSON.parse(value)); } catch (e) { this.setDataValue('response_headers', value); }
+      } else { this.setDataValue('response_headers', value); }
+    }
   },
   response_time: {
     type: DataTypes.INTEGER,

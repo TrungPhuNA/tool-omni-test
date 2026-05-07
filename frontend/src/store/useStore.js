@@ -632,10 +632,26 @@ const useStore = create((set, get) => ({
       assertions: Array.isArray(ex.assertions) ? ex.assertions : []
     };
     setActiveRequest(updatedRequest);
+    // Đảm bảo response body được parse nếu là chuỗi (đề phòng double-stringify)
+    let parsedBody = ex.response_body;
+    while (typeof parsedBody === 'string') {
+      try {
+        const next = JSON.parse(parsedBody);
+        if (typeof next === 'string' && next !== parsedBody) {
+          parsedBody = next;
+        } else {
+          parsedBody = next;
+          break;
+        }
+      } catch (e) {
+        break;
+      }
+    }
+
     setResponse({
       statusCode: ex.response_status,
       statusText: ex.response_status === 200 ? 'OK' : 'Response Log',
-      body: ex.response_body,
+      body: parsedBody,
       headers: ex.response_headers || {},
       responseTime: ex.response_time || 0
     });
