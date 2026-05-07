@@ -23,6 +23,7 @@ const PublicViewPage = () => {
                 const response = await axios.get(`${API_URL}/shares/public/${token}`);
                 if (response.data.success) {
                     setCollection(response.data.data);
+                    document.title = `${response.data.data.name || 'API Documentation'} - OmniTest`;
                     // Set first request as active if available
                     const firstReq = response.data.data.requests?.[0] || response.data.data.folders?.[0]?.requests?.[0];
                     if (firstReq) setActiveRequest(firstReq);
