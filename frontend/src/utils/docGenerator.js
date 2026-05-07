@@ -54,8 +54,9 @@ export const generateMarkdown = (title, items, depth = 1) => {
 
       // Body
       if (req.body && req.method !== 'GET') {
+        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body, null, 2);
         md += `## 📦 Request Body (JSON)\n`;
-        md += `\`\`\`json\n${req.body}\n\`\`\`\n\n`;
+        md += `\`\`\`json\n${bodyStr || '{}'}\n\`\`\`\n\n`;
       }
 
       // Responses (Examples/Snapshots)
