@@ -162,31 +162,12 @@ const RequestBuilder = ({ handleSend }) => {
           <option value="DELETE" className="text-red-500">DELETE</option>
         </select>
         
-        <div className="flex-1 relative flex items-center min-w-0">
-          {/* Highlight Layer */}
-          <div className="absolute inset-0 px-4 py-2.5 text-sm font-medium tracking-wide pointer-events-none whitespace-pre overflow-hidden flex items-center">
-            <span className="opacity-0 select-none">{activeRequest.url || ''}</span>
-            <div className="absolute inset-0 px-4 py-2.5 flex items-center pointer-events-none truncate">
-              {activeRequest.url ? (
-                activeRequest.url.split(/(\{\{[^}]+\}\})/).map((part, i) => (
-                  part.startsWith('{{') && part.endsWith('}}') ? (
-                    <span key={i} className="text-orange-400 font-bold bg-orange-400/10 px-0.5 rounded">{part}</span>
-                  ) : (
-                    <span key={i} className="text-dark-200">{part}</span>
-                  )
-                ))
-              ) : (
-                <span className="text-dark-600">Enter API URL or {"{{BASE_URL}}"}/path</span>
-              )}
-            </div>
-          </div>
-          
-          {/* Real Input Layer */}
+        <div className="flex-1 relative flex items-center min-w-0 bg-dark-800/30">
           <input 
             type="text" 
-            className="w-full bg-transparent px-4 py-2.5 outline-none text-sm font-medium tracking-wide text-transparent caret-white relative z-10"
-            placeholder=""
-            value={activeRequest.url}
+            className="w-full bg-transparent px-4 py-2.5 outline-none text-sm font-medium tracking-wide text-dark-100 placeholder-dark-600 relative z-10"
+            placeholder="Enter API URL or {{BASE_URL}}/path"
+            value={activeRequest?.url || ''}
             onChange={(e) => setActiveRequest({ url: e.target.value })}
           />
         </div>

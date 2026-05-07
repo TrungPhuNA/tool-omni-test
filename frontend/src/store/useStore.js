@@ -218,7 +218,7 @@ const useStore = create((set, get) => ({
         updatedRequest.params = newParams;
       } else {
         // Nếu xóa sạch dấu ?, xóa bảng params (giữ lại 1 dòng trống)
-        if (activeRequest.url.includes('?') && !url.includes('?')) {
+        if ((activeRequest.url || '').includes('?') && !url.includes('?')) {
            updatedRequest.params = [{ key: '', value: '', description: '', enabled: true, required: false }];
         }
       }
@@ -226,7 +226,7 @@ const useStore = create((set, get) => ({
     // 2. Nếu Params thay đổi, đồng bộ ngược lại URL
     else if (requestUpdate.params !== undefined) {
       const params = requestUpdate.params.filter(p => p.enabled && p.key);
-      const urlParts = activeRequest.url.split('?');
+      const urlParts = (activeRequest.url || '').split('?');
       const baseUrl = urlParts[0];
       
       if (params.length > 0) {
