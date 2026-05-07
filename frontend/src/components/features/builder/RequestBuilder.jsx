@@ -10,6 +10,39 @@ const BodyEditor = ({ body, onChange }) => {
     const startHeight = useRef(0);
     const [lastJson, setLastJson] = useState(null);
     const [isSchemaView, setIsSchemaView] = useState(false);
+    const preRef = useRef(null);
+
+    // Đồng bộ scroll giữa textarea và lớp highlight phía dưới
+    const handleScroll = (e) => {
+        if (preRef.current) {
+            preRef.current.scrollTop = e.target.scrollTop;
+            preRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
+    // Hàm highlight JSON bằng Regex để đổ màu giống Postman
+    const highlightJson = (code) => {
+        if (!code) return '';
+        const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        return code.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+            let cls = 'text-emerald-400'; // Mặc định cho String value
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'text-sky-400 font-medium'; // Key
+                } else {
+                    cls = 'text-emerald-400'; // String value
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'text-violet-400 font-bold'; // Boolean
+            } else if (/null/.test(match)) {
+                cls = 'text-rose-400 font-bold'; // Null
+            } else {
+                cls = 'text-orange-400'; // Number
+            }
+            return `<span class="${cls}">${escape(match)}</span>`;
+        });
+    };
 
     // Hàm Beautify: Định dạng lại nội dung JSON cho đẹp
     const handleBeautify = () => {
@@ -132,13 +165,26 @@ const BodyEditor = ({ body, onChange }) => {
                     </button>
                 </div>
             </div>
-            <textarea
-                className="w-full bg-dark-800/50 border border-dark-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-primary-500/30 text-sm font-mono transition-all resize-none text-dark-200 custom-scrollbar"
-                style={{ height: `${height}px` }}
-                placeholder='{ "key": "value" }'
-                value={displayValue}
-                onChange={(e) => onChange(e.target.value)}
-            ></textarea>
+            <div className="relative w-full rounded-xl overflow-hidden border border-dark-700 bg-dark-800/50 group focus-within:ring-2 focus-within:ring-primary-500/30 transition-all">
+                {/* Lớp hiển thị màu sắc (Highlight Layer) */}
+                <pre
+                    ref={preRef}
+                    className="absolute inset-0 w-full p-4 m-0 text-sm font-mono pointer-events-none whitespace-pre overflow-hidden break-words text-dark-300"
+                    style={{ height: `${height}px` }}
+                    dangerouslySetInnerHTML={{ __html: highlightJson(displayValue) + '\n' }}
+                />
+                
+                {/* Lớp nhận input (Input Layer - Trong suốt) */}
+                <textarea
+                    className="relative w-full bg-transparent p-4 outline-none text-sm font-mono resize-none text-transparent caret-white custom-scrollbar z-10 whitespace-pre overflow-auto"
+                    style={{ height: `${height}px` }}
+                    placeholder='{ "key": "value" }'
+                    value={displayValue}
+                    onChange={(e) => onChange(e.target.value)}
+                    onScroll={handleScroll}
+                    spellCheck="false"
+                ></textarea>
+            </div>
 
             <div
                 className={`group h-2 cursor-row-resize flex items-center justify-center relative z-10 mt-2`}
