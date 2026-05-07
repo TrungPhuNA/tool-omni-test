@@ -26,7 +26,17 @@ const Scenario = sequelize.define('Scenario', {
   steps: {
     type: DataTypes.JSON,
     allowNull: false,
-    comment: 'Mảng các bước: [{ order, requestId, extractors, assertions }]'
+    comment: 'Mảng các bước: [{ order, requestId, extractors, assertions }]',
+    get() {
+      const rawValue = this.getDataValue('steps');
+      if (typeof rawValue === 'string') {
+        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      }
+      return rawValue || [];
+    },
+    set(value) {
+      this.setDataValue('steps', typeof value === 'string' ? JSON.parse(value) : value);
+    }
   }
 }, {
   tableName: 'scenarios',

@@ -36,17 +36,47 @@ const TestHistory = sequelize.define('TestHistory', {
   response: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Raw response body (cắt bớt nếu > 100KB)'
+    comment: 'Raw response body (cắt bớt nếu > 100KB)',
+    get() {
+      const rawValue = this.getDataValue('response');
+      if (typeof rawValue === 'string') {
+        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      }
+      return rawValue;
+    },
+    set(value) {
+      this.setDataValue('response', typeof value === 'string' ? JSON.parse(value) : value);
+    }
   },
   assert_result: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Kết quả chi tiết từng assertion: [{ rule, pass, actual }]'
+    comment: 'Kết quả chi tiết từng assertion: [{ rule, pass, actual }]',
+    get() {
+      const rawValue = this.getDataValue('assert_result');
+      if (typeof rawValue === 'string') {
+        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      }
+      return rawValue || [];
+    },
+    set(value) {
+      this.setDataValue('assert_result', typeof value === 'string' ? JSON.parse(value) : value);
+    }
   },
   load_summary: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Tổng hợp load test: { rps, p95, p99, errorRate }'
+    comment: 'Tổng hợp load test: { rps, p95, p99, errorRate }',
+    get() {
+      const rawValue = this.getDataValue('load_summary');
+      if (typeof rawValue === 'string') {
+        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      }
+      return rawValue;
+    },
+    set(value) {
+      this.setDataValue('load_summary', typeof value === 'string' ? JSON.parse(value) : value);
+    }
   }
 }, {
   tableName: 'test_histories',

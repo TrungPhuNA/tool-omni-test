@@ -16,7 +16,21 @@ const Environment = sequelize.define('Environment', {
   variables: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Key-value biến môi trường, VD: { BASE_URL: "...", TOKEN: "..." }'
+    comment: 'Key-value biến môi trường, VD: { BASE_URL: "...", TOKEN: "..." }',
+    get() {
+      const rawValue = this.getDataValue('variables');
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return rawValue;
+        }
+      }
+      return rawValue || {};
+    },
+    set(value) {
+      this.setDataValue('variables', typeof value === 'string' ? JSON.parse(value) : value);
+    }
   }
 }, {
   tableName: 'environments',
