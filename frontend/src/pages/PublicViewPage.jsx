@@ -7,6 +7,50 @@ import {
     CheckCircle2, AlertCircle, Info, Copy
 } from 'lucide-react';
 
+const PublicFolderNode = ({ folder, activeRequestId, setActiveRequest, expandedFolders, toggleFolder }) => {
+    return (
+        <div className="space-y-1 mt-2">
+            <button
+                onClick={() => toggleFolder(folder.id)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-dark-500 hover:text-dark-300 transition-colors"
+            >
+                {expandedFolders[folder.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <span className="text-xs font-bold truncate uppercase tracking-wide">{folder.name}</span>
+            </button>
+
+            {expandedFolders[folder.id] && (
+                <div className="ml-4 pl-3 border-l border-dark-800 space-y-1">
+                    {/* Render Sub-folders recursively */}
+                    {folder.folders?.map(subFolder => (
+                        <PublicFolderNode 
+                            key={subFolder.id}
+                            folder={subFolder}
+                            activeRequestId={activeRequestId}
+                            setActiveRequest={setActiveRequest}
+                            expandedFolders={expandedFolders}
+                            toggleFolder={toggleFolder}
+                        />
+                    ))}
+
+                    {/* Render Requests in this folder */}
+                    {folder.requests?.map(req => (
+                        <button
+                            key={req.id}
+                            onClick={() => setActiveRequest(req)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeRequestId === req.id ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' : 'text-dark-400 hover:bg-dark-800/50'}`}
+                        >
+                            <span className={`text-[9px] font-black w-8 shrink-0 ${req.method === 'GET' ? 'text-green-500' : req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'}`}>
+                                {req.method}
+                            </span>
+                            <span className="text-xs font-medium truncate">{req.name}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const PublicViewPage = () => {
     const { token } = useParams();
     const [collection, setCollection] = useState(null);
@@ -124,34 +168,16 @@ const PublicViewPage = () => {
                                 </button>
                             ))}
 
-                            {/* Folders */}
+                            {/* Folders recursive */}
                             {collection.folders?.map(folder => (
-                                <div key={folder.id} className="space-y-1 mt-2">
-                                    <button
-                                        onClick={() => toggleFolder(folder.id)}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-dark-500 hover:text-dark-300 transition-colors"
-                                    >
-                                        {expandedFolders[folder.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                        <span className="text-xs font-bold truncate uppercase tracking-wide">{folder.name}</span>
-                                    </button>
-
-                                    {expandedFolders[folder.id] && (
-                                        <div className="ml-4 pl-3 border-l border-dark-800 space-y-1">
-                                            {folder.requests?.map(req => (
-                                                <button
-                                                    key={req.id}
-                                                    onClick={() => setActiveRequest(req)}
-                                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeRequest?.id === req.id ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20' : 'text-dark-400 hover:bg-dark-800/50'}`}
-                                                >
-                                                    <span className={`text-[9px] font-black w-8 shrink-0 ${req.method === 'GET' ? 'text-green-500' : req.method === 'POST' ? 'text-blue-500' : 'text-yellow-500'}`}>
-                                                        {req.method}
-                                                    </span>
-                                                    <span className="text-xs font-medium truncate">{req.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                <PublicFolderNode 
+                                    key={folder.id} 
+                                    folder={folder} 
+                                    activeRequestId={activeRequest?.id}
+                                    setActiveRequest={setActiveRequest}
+                                    expandedFolders={expandedFolders}
+                                    toggleFolder={toggleFolder}
+                                />
                             ))}
                         </div>
                     </div>
@@ -164,6 +190,7 @@ const PublicViewPage = () => {
                     </div>
                 </div>
             </div>
+
 
             {/* Main Content - API Details */}
             <div className="flex-1 overflow-y-auto bg-dark-950 p-12">

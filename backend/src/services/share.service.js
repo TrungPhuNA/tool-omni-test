@@ -108,11 +108,33 @@ class ShareService {
 
     // Nếu là chia sẻ Folder
     if (share.folder_id && share.folder) {
+      const { Folder, Request, RequestExample } = require('../models');
+      
+      // Hàm helper để lấy đệ quy tất cả folder con và request
+      const fetchFolderTree = async (parentFolderId) => {
+        const folders = await Folder.findAll({
+          where: { parent_id: parentFolderId },
+          include: [
+            { model: Request, as: 'requests', include: [{ model: RequestExample, as: 'examples' }] }
+          ]
+        });
+
+        const tree = [];
+        for (const folder of folders) {
+          const folderData = folder.get({ plain: true });
+          folderData.folders = await fetchFolderTree(folder.id);
+          tree.push(folderData);
+        }
+        return tree;
+      };
+
+      const subFolders = await fetchFolderTree(share.folder_id);
+      
       return {
         id: share.folder.id,
         name: share.folder.name,
         isFolderShare: true,
-        folders: [], // Folder share doesn't show sub-folders for simplicity
+        folders: subFolders,
         requests: share.folder.requests || []
       };
     }
