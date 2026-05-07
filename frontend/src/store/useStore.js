@@ -625,13 +625,13 @@ const useStore = create((set, get) => ({
 
   loadExample: (ex) => {
     const { setActiveRequest, setResponse } = get();
-    setActiveRequest({
-      method: ex.method,
-      url: ex.url,
-      headers: ex.headers || [],
-      params: ex.params || [],
-      body: ex.body || ''
-    });
+    const updatedRequest = {
+      ...ex,
+      params: Array.isArray(ex.params) ? ex.params : [],
+      headers: Array.isArray(ex.headers) ? ex.headers : [],
+      assertions: Array.isArray(ex.assertions) ? ex.assertions : []
+    };
+    setActiveRequest(updatedRequest);
     setResponse({
       statusCode: ex.response_status,
       statusText: ex.response_status === 200 ? 'OK' : 'Response Log',

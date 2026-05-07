@@ -37,11 +37,20 @@ const Request = sequelize.define('Request', {
     allowNull: true,
     comment: 'Object chứa các header, VD: { Authorization: "Bearer {{token}}" }',
     get() {
-      const rawValue = this.getDataValue('headers');
-      if (typeof rawValue === 'string') {
-        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      let value = this.getDataValue('headers');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || [];
+        }
       }
-      return rawValue || [];
+      return value || [];
     },
     set(value) {
       if (typeof value === 'string') {
@@ -60,11 +69,20 @@ const Request = sequelize.define('Request', {
     allowNull: true,
     comment: 'Query params dạng key-value',
     get() {
-      const rawValue = this.getDataValue('params');
-      if (typeof rawValue === 'string') {
-        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      let value = this.getDataValue('params');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || [];
+        }
       }
-      return rawValue || [];
+      return value || [];
     },
     set(value) {
       if (typeof value === 'string') {
@@ -83,11 +101,20 @@ const Request = sequelize.define('Request', {
     allowNull: true,
     comment: 'Request body (chỉ dùng cho POST/PUT/PATCH)',
     get() {
-      const rawValue = this.getDataValue('body');
-      if (typeof rawValue === 'string') {
-        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      let value = this.getDataValue('body');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value;
+        }
       }
-      return rawValue;
+      return value;
     },
     set(value) {
       if (typeof value === 'string') {

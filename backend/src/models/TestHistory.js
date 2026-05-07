@@ -38,11 +38,20 @@ const TestHistory = sequelize.define('TestHistory', {
     allowNull: true,
     comment: 'Raw response body (cắt bớt nếu > 100KB)',
     get() {
-      const rawValue = this.getDataValue('response');
-      if (typeof rawValue === 'string') {
-        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      let value = this.getDataValue('response');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value;
+        }
       }
-      return rawValue;
+      return value;
     },
     set(value) {
       if (typeof value === 'string') {
@@ -61,11 +70,20 @@ const TestHistory = sequelize.define('TestHistory', {
     allowNull: true,
     comment: 'Kết quả chi tiết từng assertion: [{ rule, pass, actual }]',
     get() {
-      const rawValue = this.getDataValue('assert_result');
-      if (typeof rawValue === 'string') {
-        try { return JSON.parse(rawValue); } catch (e) { return rawValue; }
+      let value = this.getDataValue('assert_result');
+      while (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          if (typeof parsed === 'string' && parsed !== value) {
+            value = parsed;
+          } else {
+            return parsed;
+          }
+        } catch (e) {
+          return value || [];
+        }
       }
-      return rawValue || [];
+      return value || [];
     },
     set(value) {
       if (typeof value === 'string') {
