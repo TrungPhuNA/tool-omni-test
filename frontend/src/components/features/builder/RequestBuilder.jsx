@@ -1,7 +1,77 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info } from 'lucide-react';
+import Select from 'react-select';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
+
+const typeOptions = [
+    { value: 'string', label: 'String' },
+    { value: 'number', label: 'Number' },
+    { value: 'boolean', label: 'Boolean' },
+    { value: 'array', label: 'Array' },
+    { value: 'object', label: 'Object' },
+    { value: 'file', label: 'File' },
+];
+
+const customSelectStyles = {
+    control: (base) => ({
+        ...base,
+        background: 'rgba(15, 23, 42, 0.3)', // bg-dark-800/30
+        borderColor: 'rgba(30, 41, 59, 1)',   // border-dark-700
+        minHeight: '34px',
+        height: '34px',
+        borderRadius: '0.5rem',             // rounded-lg
+        boxShadow: 'none',
+        fontSize: '11px',
+        '&:hover': {
+            borderColor: 'rgba(56, 189, 248, 0.5)', 
+        }
+    }),
+    valueContainer: (base) => ({
+        ...base,
+        padding: '0 8px',
+        height: '34px',
+        display: 'flex',
+        alignItems: 'center',
+    }),
+    singleValue: (base) => ({
+        ...base,
+        color: 'rgba(226, 232, 240, 1)',      // text-dark-200
+        margin: 0,
+    }),
+    input: (base) => ({
+        ...base,
+        margin: 0,
+        padding: 0,
+        color: 'white',
+    }),
+    menu: (base) => ({
+        ...base,
+        background: '#0f172a',                // bg-dark-900
+        border: '1px solid rgba(30, 41, 59, 1)',
+        borderRadius: '0.5rem',
+        overflow: 'hidden',
+        zIndex: 100,
+    }),
+    option: (base, { isFocused, isSelected }) => ({
+        ...base,
+        background: isSelected ? 'rgba(56, 189, 248, 0.2)' : isFocused ? 'rgba(30, 41, 59, 0.5)' : 'transparent',
+        color: isSelected ? '#38bdf8' : '#94a3b8',
+        fontSize: '11px',
+        padding: '8px 12px',
+        cursor: 'pointer',
+        '&:active': {
+            background: 'rgba(56, 189, 248, 0.3)',
+        }
+    }),
+    indicatorSeparator: () => ({ display: 'none' }),
+    dropdownIndicator: (base) => ({
+        ...base,
+        padding: '0 4px',
+        color: '#64748b',
+        '&:hover': { color: '#94a3b8' }
+    })
+};
 
 // Hàm helper tạo cấu trúc Tooltip xịn dùng chung
 const renderVariableSpan = (key, value, targetId = 'api-url-input-field-unique') => {
@@ -476,18 +546,16 @@ const DocsTab = ({ request, onChange }) => {
                                             <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
                                             <td className="px-5 py-4 text-center">
                                                 {isEditing ? (
-                                                    <select 
-                                                        className="bg-dark-800 border border-dark-700 rounded px-2 py-1 text-[10px] text-dark-200 outline-none focus:ring-1 focus:ring-primary-500/50"
-                                                        value={p.type || 'string'}
-                                                        onChange={(e) => handleUpdateParamType(i, e.target.value)}
-                                                    >
-                                                        <option value="string">String</option>
-                                                        <option value="number">Number</option>
-                                                        <option value="boolean">Boolean</option>
-                                                        <option value="array">Array</option>
-                                                        <option value="object">Object</option>
-                                                        <option value="file">File</option>
-                                                    </select>
+                                                    <div className="w-[100px] mx-auto">
+                                                        <Select 
+                                                            options={typeOptions}
+                                                            styles={customSelectStyles}
+                                                            value={typeOptions.find(opt => opt.value === (p.type || 'string'))}
+                                                            onChange={(opt) => handleUpdateParamType(i, opt.value)}
+                                                            isSearchable={false}
+                                                            menuPortalTarget={document.body}
+                                                        />
+                                                    </div>
                                                 ) : (
                                                     <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{p.type || 'string'}</span>
                                                 )}
@@ -815,18 +883,16 @@ const RequestBuilder = ({ handleSend }) => {
                                                 value={p.key}
                                                 onChange={(e) => handleRowChange('params', index, 'key', e.target.value)}
                                             />
-                                            <select 
-                                                className="bg-dark-800/50 border border-dark-700 rounded-lg px-2 py-1.5 text-[10px] text-dark-300 outline-none focus:ring-1 focus:ring-primary-500/50"
-                                                value={p.type || 'string'}
-                                                onChange={(e) => handleRowChange('params', index, 'type', e.target.value)}
-                                            >
-                                                <option value="string">String</option>
-                                                <option value="number">Number</option>
-                                                <option value="boolean">Boolean</option>
-                                                <option value="array">Array</option>
-                                                <option value="object">Object</option>
-                                                <option value="file">File</option>
-                                            </select>
+                                            <div className="w-[100px]">
+                                                <Select 
+                                                    options={typeOptions}
+                                                    styles={customSelectStyles}
+                                                    value={typeOptions.find(opt => opt.value === (p.type || 'string'))}
+                                                    onChange={(opt) => handleRowChange('params', index, 'type', opt.value)}
+                                                    isSearchable={false}
+                                                    menuPortalTarget={document.body}
+                                                />
+                                            </div>
                                             <div className="relative flex-1">
                                                 <div 
                                                     className="absolute inset-0 px-3 py-1.5 text-xs font-mono whitespace-nowrap overflow-hidden pointer-events-none"
