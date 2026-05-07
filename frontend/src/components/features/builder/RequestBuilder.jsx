@@ -305,6 +305,12 @@ const DocsTab = ({ request, onChange }) => {
         newParams[index].required = required;
         onChange({ params: newParams });
     };
+
+    const handleUpdateParamType = (index, type) => {
+        const newParams = [...request.params];
+        newParams[index].type = type;
+        onChange({ params: newParams });
+    };
     
     return (
         <div className="flex flex-col h-full animate-fade-in pr-2">
@@ -458,6 +464,7 @@ const DocsTab = ({ request, onChange }) => {
                                 <thead className="bg-dark-800/50 text-dark-500 text-[9px] uppercase font-black tracking-wider">
                                     <tr>
                                         <th className="px-5 py-3">Parameter</th>
+                                        <th className="px-5 py-3 text-center">Type</th>
                                         <th className="px-5 py-3">Value</th>
                                         <th className="px-5 py-3 text-center">Required</th>
                                         <th className="px-5 py-3">Description / Note</th>
@@ -467,6 +474,24 @@ const DocsTab = ({ request, onChange }) => {
                                     {request.params.map((p, i) => p.enabled && p.key && (
                                         <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
                                             <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
+                                            <td className="px-5 py-4 text-center">
+                                                {isEditing ? (
+                                                    <select 
+                                                        className="bg-dark-800 border border-dark-700 rounded px-2 py-1 text-[10px] text-dark-200 outline-none focus:ring-1 focus:ring-primary-500/50"
+                                                        value={p.type || 'string'}
+                                                        onChange={(e) => handleUpdateParamType(i, e.target.value)}
+                                                    >
+                                                        <option value="string">String</option>
+                                                        <option value="number">Number</option>
+                                                        <option value="boolean">Boolean</option>
+                                                        <option value="array">Array</option>
+                                                        <option value="object">Object</option>
+                                                        <option value="file">File</option>
+                                                    </select>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{p.type || 'string'}</span>
+                                                )}
+                                            </td>
                                             <td className="px-5 py-4 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(p.value, useStore.getState().activeEnvironment, 'param-value-input-' + i) }}></td>
                                             <td className="px-5 py-4 text-center">
                                                 {isEditing ? (
@@ -561,7 +586,7 @@ const RequestBuilder = ({ handleSend }) => {
 
     const syncUrlScroll = () => {
         if (urlInputRef.current && urlDisplayRef.current) {
-            urlDisplayRef.current.scrollLeft = urlInputRef.current.scrollLeft;
+            urlDisplayRef.current.style.transform = `translateX(-${urlInputRef.current.scrollLeft}px)`;
         }
     };
 
@@ -621,7 +646,7 @@ const RequestBuilder = ({ handleSend }) => {
             {/* Request Input Area */}
             <div className="flex gap-0 p-1 bg-dark-900 border border-dark-800 rounded-xl shadow-lg items-stretch relative z-[60]">
                 <select
-                    className="bg-dark-800 text-sm font-bold px-4 py-2.5 rounded-l-lg outline-none border-r border-dark-700 focus:border-primary-500 transition-all min-w-[100px] text-dark-100 cursor-pointer"
+                    className="bg-dark-800 text-sm font-bold px-4 py-2.5 rounded-l-lg outline-none border-r border-dark-700 focus:border-primary-500 transition-all min-w-[100px] text-dark-100 cursor-pointer relative z-20"
                     value={activeRequest.method}
                     onChange={(e) => setActiveRequest({ method: e.target.value })}
                 >
@@ -632,42 +657,57 @@ const RequestBuilder = ({ handleSend }) => {
                     <option value="DELETE" className="text-red-500">DELETE</option>
                 </select>
 
-                <div className="flex-1 relative grid grid-cols-1 grid-rows-1 bg-dark-800/30 rounded-xl z-50 overflow-visible h-[42px]">
-                    <div 
-                        ref={urlDisplayRef}
-                        className="col-start-1 row-start-1 px-4 whitespace-nowrap overflow-visible pointer-events-none z-20 border-none outline-none m-0 flex items-center"
-                        style={{ 
-                            height: '42px', 
-                            lineHeight: '42px', 
-                            letterSpacing: '0px', 
-                            fontSize: '13px',
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
-                        }}
-                        dangerouslySetInnerHTML={{ __html: renderVariables(activeRequest?.url || '', useStore.getState().activeEnvironment, 'api-url-input-field-unique') }}
-                    />
-                    <input
-                        ref={urlInputRef}
-                        id="api-url-input-field-unique"
-                        type="text"
-                        className="col-start-1 row-start-1 w-full bg-transparent px-4 outline-none text-transparent caret-white relative z-0 border-none m-0"
-                        style={{ 
-                            height: '42px', 
-                            lineHeight: '42px', 
-                            letterSpacing: '0px', 
-                            fontSize: '13px',
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
-                        }}
-                        placeholder="Enter API URL or {{BASE_URL}}/path"
-                        value={activeRequest?.url || ''}
-                        onChange={(e) => setActiveRequest({ url: e.target.value })}
-                        onScroll={syncUrlScroll}
-                        spellCheck="false"
-                        autoComplete="off"
-                    />
+                <div className="flex-1 relative h-[42px] z-10">
+                    {/* 1. Background Layer */}
+                    <div className="absolute inset-0 bg-dark-800/30 rounded-xl pointer-events-none"></div>
+                    
+                    {/* 2. Content Layer (Clipped X, Visible Y up to 300px) */}
+                    <div className="absolute inset-x-0 top-0 overflow-hidden pointer-events-none" style={{ height: '300px' }}>
+                        <div className="grid grid-cols-1 grid-rows-1 h-[42px] relative overflow-visible">
+                            <div 
+                                ref={urlDisplayRef}
+                                className="col-start-1 row-start-1 px-4 whitespace-nowrap overflow-visible pointer-events-none z-20 border-none outline-none m-0 flex items-center transition-none"
+                                style={{ 
+                                    height: '42px', 
+                                    lineHeight: '42px', 
+                                    letterSpacing: '0px', 
+                                    fontSize: '13px',
+                                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                                    willChange: 'transform'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: renderVariables(activeRequest?.url || '', useStore.getState().activeEnvironment, 'api-url-input-field-unique') }}
+                            />
+                            <input
+                                ref={urlInputRef}
+                                id="api-url-input-field-unique"
+                                type="text"
+                                className="col-start-1 row-start-1 w-full bg-transparent px-4 outline-none text-transparent caret-white relative z-10 border-none m-0 pointer-events-auto"
+                                style={{ 
+                                    height: '42px', 
+                                    lineHeight: '42px', 
+                                    letterSpacing: '0px', 
+                                    fontSize: '13px',
+                                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+                                }}
+                                placeholder="Enter API URL or {{BASE_URL}}/path"
+                                value={activeRequest?.url || ''}
+                                onChange={(e) => setActiveRequest({ url: e.target.value })}
+                                onScroll={syncUrlScroll}
+                                onWheel={(e) => {
+                                    if (urlInputRef.current) {
+                                        urlInputRef.current.scrollLeft += e.deltaY;
+                                        syncUrlScroll();
+                                    }
+                                }}
+                                spellCheck="false"
+                                autoComplete="off"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <button
-                    className="btn-primary flex items-center gap-2 px-6 rounded-r-lg shadow-lg shadow-primary-900/20"
+                    className="btn-primary flex items-center gap-2 px-6 rounded-r-lg shadow-lg shadow-primary-900/20 relative z-20"
                     onClick={handleSend}
                     disabled={isLoading}
                 >
@@ -740,16 +780,17 @@ const RequestBuilder = ({ handleSend }) => {
                                 ></textarea>
                             ) : (
                                 <div className="space-y-2">
-                                    <div className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 px-2">
+                                    <div className="grid grid-cols-[30px_40px_1.2fr_100px_1.2fr_1.5fr_40px] gap-2 px-2">
                                         <div className=""></div>
                                         <div className="text-[10px] uppercase font-bold text-dark-600 text-center" title="Required">*</div>
                                         <div className="text-[10px] uppercase font-bold text-dark-600">Key</div>
+                                        <div className="text-[10px] uppercase font-bold text-dark-600 text-center">Type</div>
                                         <div className="text-[10px] uppercase font-bold text-dark-600">Value</div>
                                         <div className="text-[10px] uppercase font-bold text-dark-600">Description</div>
                                         <div className=""></div>
                                     </div>
                                     {activeRequest.params.map((p, index) => (
-                                        <div key={index} className="grid grid-cols-[30px_40px_1fr_1fr_1fr_40px] gap-2 items-center group animate-fade-in">
+                                        <div key={index} className="grid grid-cols-[30px_40px_1.2fr_100px_1.2fr_1.5fr_40px] gap-2 items-center group animate-fade-in">
                                             <div className="flex justify-center">
                                                 <input
                                                     type="checkbox"
@@ -774,6 +815,18 @@ const RequestBuilder = ({ handleSend }) => {
                                                 value={p.key}
                                                 onChange={(e) => handleRowChange('params', index, 'key', e.target.value)}
                                             />
+                                            <select 
+                                                className="bg-dark-800/50 border border-dark-700 rounded-lg px-2 py-1.5 text-[10px] text-dark-300 outline-none focus:ring-1 focus:ring-primary-500/50"
+                                                value={p.type || 'string'}
+                                                onChange={(e) => handleRowChange('params', index, 'type', e.target.value)}
+                                            >
+                                                <option value="string">String</option>
+                                                <option value="number">Number</option>
+                                                <option value="boolean">Boolean</option>
+                                                <option value="array">Array</option>
+                                                <option value="object">Object</option>
+                                                <option value="file">File</option>
+                                            </select>
                                             <div className="relative flex-1">
                                                 <div 
                                                     className="absolute inset-0 px-3 py-1.5 text-xs font-mono whitespace-nowrap overflow-hidden pointer-events-none"

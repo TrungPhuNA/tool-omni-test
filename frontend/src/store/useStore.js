@@ -215,15 +215,15 @@ const useStore = create((set, get) => ({
                 const searchParams = new URLSearchParams(queryString);
                 const newParams = [];
                 searchParams.forEach((value, key) => {
-                    newParams.push({ key, value, description: '', enabled: true, required: false });
+                    newParams.push({ key, value, description: '', type: 'string', enabled: true, required: false });
                 });
                 // Giữ lại một dòng trống cuối cùng
-                newParams.push({ key: '', value: '', description: '', enabled: true, required: false });
+                newParams.push({ key: '', value: '', description: '', type: 'string', enabled: true, required: false });
                 updatedRequest.params = newParams;
             } else {
                 // Nếu xóa sạch dấu ?, xóa bảng params (giữ lại 1 dòng trống)
                 if ((activeRequest.url || '').includes('?') && !url.includes('?')) {
-                    updatedRequest.params = [{ key: '', value: '', description: '', enabled: true, required: false }];
+                    updatedRequest.params = [{ key: '', value: '', description: '', type: 'string', enabled: true, required: false }];
                 }
             }
         }
@@ -750,7 +750,7 @@ const useStore = create((set, get) => ({
     addParam: () => {
         const { activeRequest, setActiveRequest } = get();
         setActiveRequest({
-            params: [...activeRequest.params, { key: '', value: '', description: '', enabled: true, required: false }]
+            params: [...activeRequest.params, { key: '', value: '', description: '', type: 'string', enabled: true, required: false }]
         });
     },
 
@@ -778,11 +778,12 @@ const useStore = create((set, get) => ({
                     key: key.trim(),
                     value: valueParts.join(':').trim(),
                     description: '',
+                    type: 'string',
                     enabled: true,
                     required: false
                 };
             });
-        setActiveRequest({ params: params.length > 0 ? params : [{ key: '', value: '', description: '', enabled: true, required: false }] });
+        setActiveRequest({ params: params.length > 0 ? params : [{ key: '', value: '', description: '', type: 'string', enabled: true, required: false }] });
     },
 
     executeRequest: async () => {
