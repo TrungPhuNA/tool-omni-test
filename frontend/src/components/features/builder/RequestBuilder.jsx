@@ -3,6 +3,58 @@ import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info } 
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
 
+// Hàm helper tạo cấu trúc Tooltip xịn dùng chung
+const renderVariableSpan = (key, value, targetId = 'api-url-input-field-unique') => {
+    const displayValue = value !== undefined ? value : 'Chưa định nghĩa';
+    const escapedKey = key.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedValue = String(displayValue).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    return `
+        <span 
+            class="variable-badge group/var relative inline-block text-orange-400 font-mono cursor-text pointer-events-auto"
+            onclick="document.getElementById('${targetId}').focus()"
+        >
+            {{${escapedKey}}}
+            <div class="variable-tooltip absolute top-full left-0 mt-1.5 hidden group-hover/var:block z-[9999] w-max max-w-xs animate-fade-in pointer-events-none">
+                <div class="bg-dark-900 border border-dark-700 rounded-lg shadow-2xl overflow-hidden p-2.5 shadow-orange-950/40 min-w-[180px]">
+                    <div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-dark-800">
+                        <div class="w-4 h-4 bg-orange-500/20 rounded flex items-center justify-center text-[9px] text-orange-400 font-black italic border border-orange-500/20">E</div>
+                        <span class="text-[9px] font-black text-dark-400 uppercase tracking-widest">Variable</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="bg-dark-950 p-2 rounded border border-dark-800 shadow-inner">
+                            <code class="text-[11px] text-orange-400 font-mono break-all leading-relaxed">${escapedValue}</code>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[9px] text-dark-500 font-bold uppercase tracking-tight flex items-center gap-1">
+                                <span class="text-emerald-500 text-xs">◈</span> Resolved
+                            </span>
+                            <span class="text-[9px] text-dark-300 font-mono font-bold">${escapedKey}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-2 h-2 bg-dark-900 border-l border-t border-dark-700 rotate-45 absolute -top-1 left-4"></div>
+            </div>
+        </span>
+    `;
+};
+
+// Hàm helper để tô màu biến và hiện giá trị khi hover
+const renderVariables = (text, environment, targetId) => {
+    if (!text) return '';
+    const escape = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    const parts = text.split(/({{[^{}]+}})/g);
+    return parts.map(part => {
+        if (part.startsWith('{{') && part.endsWith('}}')) {
+            const key = part.slice(2, -2);
+            const value = environment?.variables?.[key];
+            return renderVariableSpan(key, value, targetId);
+        }
+        return `<span>${escape(part)}</span>`;
+    }).join('');
+};
+
 const BodyEditor = ({ body, onChange }) => {
     const [height, setHeight] = useState(300);
     const [isResizing, setIsResizing] = useState(false);
@@ -20,25 +72,33 @@ const BodyEditor = ({ body, onChange }) => {
         }
     };
 
-    // Hàm highlight JSON bằng Regex để đổ màu giống Postman
     const highlightJson = (code) => {
         if (!code) return '';
         const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
-        return code.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
-            let cls = 'text-emerald-400'; // Mặc định cho String value
+        // Highlight biến {{...}}
+        let highlightedCode = code.replace(/({{[^{}]+}})/g, (match) => {
+            const environment = useStore.getState().activeEnvironment;
+            const key = match.slice(2, -2);
+            const value = environment?.variables?.[key];
+            return renderVariableSpan(key, value, 'body-json-textarea');
+        });
+
+        return highlightedCode.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+            if (match.startsWith('<span')) return match; 
+            let cls = 'text-emerald-400'; 
             if (/^"/.test(match)) {
                 if (/:$/.test(match)) {
-                    cls = 'text-sky-400 font-medium'; // Key
+                    cls = 'text-sky-400 font-medium'; 
                 } else {
-                    cls = 'text-emerald-400'; // String value
+                    cls = 'text-emerald-400'; 
                 }
             } else if (/true|false/.test(match)) {
-                cls = 'text-violet-400 font-bold'; // Boolean
+                cls = 'text-violet-400 font-bold'; 
             } else if (/null/.test(match)) {
-                cls = 'text-rose-400 font-bold'; // Null
+                cls = 'text-rose-400 font-bold'; 
             } else {
-                cls = 'text-orange-400'; // Number
+                cls = 'text-orange-400'; 
             }
             return `<span class="${cls}">${escape(match)}</span>`;
         });
@@ -165,19 +225,20 @@ const BodyEditor = ({ body, onChange }) => {
                     </button>
                 </div>
             </div>
-            <div className="relative w-full rounded-xl overflow-hidden border border-dark-700 bg-dark-800/50 group focus-within:ring-2 focus-within:ring-primary-500/30 transition-all">
-                {/* Lớp hiển thị màu sắc (Highlight Layer) */}
+            <div className="relative w-full rounded-xl overflow-visible border border-dark-700 bg-dark-800/50 group focus-within:ring-2 focus-within:ring-primary-500/30 transition-all">
+                {/* Lớp hiển thị màu sắc (Highlight Layer) - Đưa lên trên z-20 */}
                 <pre
                     ref={preRef}
-                    className="absolute inset-0 w-full p-4 m-0 text-sm font-mono pointer-events-none whitespace-pre overflow-hidden break-words text-dark-300"
-                    style={{ height: `${height}px` }}
+                    className="absolute inset-0 w-full p-4 m-0 text-sm font-mono pointer-events-none whitespace-pre overflow-hidden break-words text-dark-300 z-20"
+                    style={{ height: `${height}px`, boxSizing: 'border-box' }}
                     dangerouslySetInnerHTML={{ __html: highlightJson(displayValue) + '\n' }}
                 />
                 
-                {/* Lớp nhận input (Input Layer - Trong suốt) */}
+                {/* Lớp nhận input (Input Layer) - Đưa xuống dưới z-0 */}
                 <textarea
-                    className="relative w-full bg-transparent p-4 outline-none text-sm font-mono resize-none text-transparent caret-white custom-scrollbar z-10 whitespace-pre overflow-auto"
-                    style={{ height: `${height}px` }}
+                    id="body-json-textarea"
+                    className="relative w-full bg-transparent p-4 outline-none text-sm font-mono resize-none text-white/10 caret-white custom-scrollbar z-0 whitespace-pre overflow-auto"
+                    style={{ height: `${height}px`, boxSizing: 'border-box' }}
                     placeholder='{ "key": "value" }'
                     value={displayValue}
                     onChange={(e) => onChange(e.target.value)}
@@ -206,6 +267,10 @@ const DocsTab = ({ request, onChange }) => {
         if (!text) return '';
         let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         
+        // Render biến trước
+        const environment = useStore.getState().activeEnvironment;
+        html = renderVariables(text, environment);
+
         return html
             .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-dark-100 mt-6 mb-2">$1</h3>')
             .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-dark-100 mt-8 mb-4 border-b border-dark-800 pb-2">$1</h2>')
@@ -320,7 +385,7 @@ const DocsTab = ({ request, onChange }) => {
                             request.method === 'GET' ? 'bg-green-500/10 text-green-500' :
                             request.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
                         }`}>{request.method}</span>
-                        <span className="text-dark-200 break-all">{request.url || 'No URL'}</span>
+                        <span dangerouslySetInnerHTML={{ __html: renderVariables(request.url || 'No URL', useStore.getState().activeEnvironment, 'url-main-input') }}></span>
                     </div>
                 </div>
 
@@ -345,7 +410,7 @@ const DocsTab = ({ request, onChange }) => {
                                     {request.headers.map((h, i) => h.enabled && h.key && (
                                         <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
                                             <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{h.key}</td>
-                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400">{h.value}</td>
+                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(h.value, useStore.getState().activeEnvironment, 'header-value-input-' + i) }}></td>
                                             <td className="px-5 py-4 text-center">
                                                 {isEditing ? (
                                                     <input 
@@ -402,7 +467,7 @@ const DocsTab = ({ request, onChange }) => {
                                     {request.params.map((p, i) => p.enabled && p.key && (
                                         <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
                                             <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
-                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400">{p.value}</td>
+                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(p.value, useStore.getState().activeEnvironment, 'param-value-input-' + i) }}></td>
                                             <td className="px-5 py-4 text-center">
                                                 {isEditing ? (
                                                     <input 
@@ -490,6 +555,15 @@ const RequestBuilder = ({ handleSend }) => {
     const [editingExample, setEditingExample] = useState(null);
     const [bulkMode, setBulkMode] = useState({ params: false, headers: false });
     const [bulkText, setBulkText] = useState({ params: '', headers: '' });
+    
+    const urlInputRef = useRef(null);
+    const urlDisplayRef = useRef(null);
+
+    const syncUrlScroll = () => {
+        if (urlInputRef.current && urlDisplayRef.current) {
+            urlDisplayRef.current.scrollLeft = urlInputRef.current.scrollLeft;
+        }
+    };
 
     useEffect(() => {
         if (activeRequest?.id && activeTab === 'examples') {
@@ -543,9 +617,9 @@ const RequestBuilder = ({ handleSend }) => {
     };
 
     return (
-        <div className="p-6 space-y-6 flex-1 flex flex-col overflow-hidden">
+        <div className="p-6 space-y-6 flex-1 flex flex-col overflow-visible">
             {/* Request Input Area */}
-            <div className="flex gap-0 p-1 bg-dark-900 border border-dark-800 rounded-xl shadow-lg items-stretch">
+            <div className="flex gap-0 p-1 bg-dark-900 border border-dark-800 rounded-xl shadow-lg items-stretch relative z-[60]">
                 <select
                     className="bg-dark-800 text-sm font-bold px-4 py-2.5 rounded-l-lg outline-none border-r border-dark-700 focus:border-primary-500 transition-all min-w-[100px] text-dark-100 cursor-pointer"
                     value={activeRequest.method}
@@ -558,13 +632,37 @@ const RequestBuilder = ({ handleSend }) => {
                     <option value="DELETE" className="text-red-500">DELETE</option>
                 </select>
 
-                <div className="flex-1 relative flex items-center min-w-0 bg-dark-800/30">
+                <div className="flex-1 relative grid grid-cols-1 grid-rows-1 bg-dark-800/30 rounded-xl z-50 overflow-visible h-[42px]">
+                    <div 
+                        ref={urlDisplayRef}
+                        className="col-start-1 row-start-1 px-4 whitespace-nowrap overflow-visible pointer-events-none z-20 border-none outline-none m-0 flex items-center"
+                        style={{ 
+                            height: '42px', 
+                            lineHeight: '42px', 
+                            letterSpacing: '0px', 
+                            fontSize: '13px',
+                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+                        }}
+                        dangerouslySetInnerHTML={{ __html: renderVariables(activeRequest?.url || '', useStore.getState().activeEnvironment, 'api-url-input-field-unique') }}
+                    />
                     <input
+                        ref={urlInputRef}
+                        id="api-url-input-field-unique"
                         type="text"
-                        className="w-full bg-transparent px-4 py-2.5 outline-none text-sm font-medium tracking-wide text-dark-100 placeholder-dark-600 relative z-10"
+                        className="col-start-1 row-start-1 w-full bg-transparent px-4 outline-none text-transparent caret-white relative z-0 border-none m-0"
+                        style={{ 
+                            height: '42px', 
+                            lineHeight: '42px', 
+                            letterSpacing: '0px', 
+                            fontSize: '13px',
+                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+                        }}
                         placeholder="Enter API URL or {{BASE_URL}}/path"
                         value={activeRequest?.url || ''}
                         onChange={(e) => setActiveRequest({ url: e.target.value })}
+                        onScroll={syncUrlScroll}
+                        spellCheck="false"
+                        autoComplete="off"
                     />
                 </div>
 
@@ -676,13 +774,20 @@ const RequestBuilder = ({ handleSend }) => {
                                                 value={p.key}
                                                 onChange={(e) => handleRowChange('params', index, 'key', e.target.value)}
                                             />
-                                            <input
-                                                type="text"
-                                                placeholder="Value"
-                                                className="input-field !py-1.5"
-                                                value={p.value}
-                                                onChange={(e) => handleRowChange('params', index, 'value', e.target.value)}
-                                            />
+                                            <div className="relative flex-1">
+                                                <div 
+                                                    className="absolute inset-0 px-3 py-1.5 text-xs font-mono whitespace-nowrap overflow-hidden pointer-events-none"
+                                                    dangerouslySetInnerHTML={{ __html: renderVariables(p.value, useStore.getState().activeEnvironment, 'param-value-input-' + index) }}
+                                                />
+                                                <input
+                                                    id={`param-value-input-${index}`}
+                                                    type="text"
+                                                    placeholder="Value"
+                                                    className="input-field !py-1.5 text-white/10 caret-white relative z-10 bg-transparent w-full"
+                                                    value={p.value}
+                                                    onChange={(e) => handleRowChange('params', index, 'value', e.target.value)}
+                                                />
+                                            </div>
                                             <input
                                                 type="text"
                                                 placeholder="Description"
@@ -765,13 +870,20 @@ const RequestBuilder = ({ handleSend }) => {
                                                 value={h.key}
                                                 onChange={(e) => handleRowChange('headers', index, 'key', e.target.value)}
                                             />
-                                            <input
-                                                type="text"
-                                                placeholder="Value"
-                                                className="input-field !py-1.5"
-                                                value={h.value}
-                                                onChange={(e) => handleRowChange('headers', index, 'value', e.target.value)}
-                                            />
+                                            <div className="relative flex-1">
+                                                <div 
+                                                    className="absolute inset-0 px-3 py-1.5 text-xs font-mono whitespace-nowrap overflow-hidden pointer-events-none"
+                                                    dangerouslySetInnerHTML={{ __html: renderVariables(h.value, useStore.getState().activeEnvironment, 'header-value-input-' + index) }}
+                                                />
+                                                <input
+                                                    id={`header-value-input-${index}`}
+                                                    type="text"
+                                                    placeholder="Value"
+                                                    className="input-field !py-1.5 text-white/10 caret-white relative z-10 bg-transparent w-full"
+                                                    value={h.value}
+                                                    onChange={(e) => handleRowChange('headers', index, 'value', e.target.value)}
+                                                />
+                                            </div>
                                             <input
                                                 type="text"
                                                 placeholder="Description"

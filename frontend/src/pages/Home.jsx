@@ -86,7 +86,7 @@ const Home = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden bg-dark-950">
+        <div className="flex-1 flex flex-col overflow-visible bg-dark-950">
             <Header
                 activeRequest={activeRequest}
                 setActiveRequest={setActiveRequest}
@@ -100,8 +100,8 @@ const Home = () => {
             <TabBar />
 
             {tabs.length > 0 && activeTabId ? (
-                <div className="flex-1 flex overflow-hidden relative">
-                    <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 flex overflow-visible relative">
+                    <div className="flex-1 flex flex-col overflow-visible">
                         <RequestBuilder handleSend={handleSend} />
                     </div>
 

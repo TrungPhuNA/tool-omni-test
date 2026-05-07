@@ -252,7 +252,7 @@ const MainLayout = () => {
                 <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-visible">
                 <Outlet context={{ showToast, setIsEnvModalOpen }} />
             </div>
 

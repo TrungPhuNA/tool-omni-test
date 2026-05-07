@@ -92,7 +92,11 @@ const PublicViewPage = () => {
         const parts = url.split(/(\{\{.*?\}\})/g);
         return parts.map((part, i) => {
             if (part.startsWith('{{') && part.endsWith('}}')) {
-                return <span key={i} className="text-orange-400 font-black drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]">{part}</span>;
+                return (
+                    <span key={i} className="text-orange-400 font-bold drop-shadow-[0_0_8px_rgba(251,146,60,0.5)] cursor-help border-b border-orange-500/20" title="Biến môi trường">
+                        {part}
+                    </span>
+                );
             }
             return part;
         });
