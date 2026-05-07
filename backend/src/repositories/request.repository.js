@@ -4,7 +4,7 @@ class RequestRepository {
   async getByCollectionId(collectionId) {
     return await Request.findAll({
       where: { collection_id: collectionId },
-      order: [['order', 'ASC'], ['created_at', 'ASC']]
+      order: [['created_at', 'ASC']]
     });
   }
 

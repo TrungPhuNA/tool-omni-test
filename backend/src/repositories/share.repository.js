@@ -14,8 +14,8 @@ class ShareRepository {
               model: Folder, 
               as: 'folders', 
               separate: true,
-              order: [['order', 'ASC'], ['created_at', 'ASC']],
-              include: [{ model: Request, as: 'requests', separate: true, order: [['order', 'ASC'], ['created_at', 'ASC']], include: [{ model: RequestExample, as: 'examples' }] }] 
+              order: [['order', 'ASC']],
+              include: [{ model: Request, as: 'requests', separate: true, order: [['order', 'ASC']], include: [{ model: RequestExample, as: 'examples' }] }] 
             },
             { 
               model: Request, 
@@ -23,7 +23,7 @@ class ShareRepository {
               where: { folder_id: null }, 
               required: false, 
               separate: true,
-              order: [['order', 'ASC'], ['created_at', 'ASC']],
+              order: [['order', 'ASC']],
               include: [{ model: RequestExample, as: 'examples' }] 
             }
           ]
@@ -32,7 +32,7 @@ class ShareRepository {
           model: Folder,
           as: 'folder',
           include: [
-            { model: Request, as: 'requests', separate: true, order: [['order', 'ASC'], ['created_at', 'ASC']], include: [{ model: RequestExample, as: 'examples' }] }
+            { model: Request, as: 'requests', separate: true, order: [['order', 'ASC']], include: [{ model: RequestExample, as: 'examples' }] }
           ]
         }
       ]
