@@ -355,6 +355,16 @@ const Sidebar = ({
                                                             <FileText className="w-3 h-3" />
                                                         </button>
                                                         <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShareModal({ isOpen: true, folder: folder });
+                                                            }}
+                                                            className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-primary-400 cursor-pointer"
+                                                            title="Chia sẻ Thư mục"
+                                                        >
+                                                            <Share2 className="w-3 h-3" />
+                                                        </button>
+                                                        <button
                                                             onClick={(e) => handleImportCurl(e, col.id, folder.id)}
                                                             className="p-1 hover:bg-dark-700 rounded text-dark-500 hover:text-blue-500"
                                                             title="Import từ cURL vào Folder"
@@ -658,8 +668,9 @@ const Sidebar = ({
 
             <ShareModal
                 isOpen={shareModal.isOpen}
-                onClose={() => setShareModal({ ...shareModal, isOpen: false })}
+                onClose={() => setShareModal({ ...shareModal, isOpen: false, folder: null, collection: null })}
                 collection={shareModal.collection}
+                folder={shareModal.folder}
             />
         </aside>
     );

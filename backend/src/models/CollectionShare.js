@@ -9,7 +9,12 @@ const CollectionShare = sequelize.define('CollectionShare', {
   },
   collection_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
+  },
+  folder_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID của folder nếu chia sẻ ở cấp độ folder'
   },
   user_id: {
     type: DataTypes.INTEGER,

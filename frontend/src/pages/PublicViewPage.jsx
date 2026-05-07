@@ -230,7 +230,7 @@ const PublicViewPage = () => {
                     <span className="text-[10px] font-bold text-dark-500 uppercase">application/json</span>
                   </div>
                   <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto">
-                    <code>{activeRequest.body}</code>
+                    <code>{typeof activeRequest.body === 'string' ? activeRequest.body : JSON.stringify(activeRequest.body, null, 2)}</code>
                   </pre>
                 </div>
               </div>

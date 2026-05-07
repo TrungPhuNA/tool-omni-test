@@ -8,6 +8,7 @@ router.get('/public/:token', shareController.getPublicCollection);
 
 // Protected routes - Auth required
 router.post('/', authMiddleware, shareController.createShare);
+router.get('/folder/:folderId', authMiddleware, shareController.getSharesByFolder);
 router.get('/:collectionId', authMiddleware, shareController.getShares);
 router.delete('/:id', authMiddleware, shareController.deleteShare);
 

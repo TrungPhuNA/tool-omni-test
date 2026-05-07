@@ -35,6 +35,9 @@ CollectionShare.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collec
 User.hasMany(CollectionShare, { foreignKey: 'user_id', as: 'createdShares' });
 CollectionShare.belongsTo(User, { foreignKey: 'user_id', as: 'sharer' });
 
+Folder.hasMany(CollectionShare, { foreignKey: 'folder_id', as: 'shares' });
+CollectionShare.belongsTo(Folder, { foreignKey: 'folder_id', as: 'folder' });
+
 Request.hasMany(DataDrivenTest, { foreignKey: 'request_id', as: 'dataDrivenTests' });
 DataDrivenTest.belongsTo(Request, { foreignKey: 'request_id', as: 'request' });
 

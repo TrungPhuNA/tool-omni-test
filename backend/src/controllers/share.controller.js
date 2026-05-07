@@ -48,6 +48,30 @@ exports.getShares = async (req, res, next) => {
 };
 
 /**
+ * Get all shares for a folder
+ */
+exports.getSharesByFolder = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { folderId } = req.params;
+        const shares = await shareService.getSharesByFolder(userId, folderId);
+
+        res.status(200).json({
+            success: true,
+            data: shares
+        });
+    } catch (error) {
+        if (error.message === 'Bạn không có quyền xem thông tin chia sẻ của thư mục này') {
+            return res.status(403).json({ success: false, message: error.message });
+        }
+        if (error.message === 'Không tìm thấy thư mục') {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+        next(error);
+    }
+};
+
+/**
  * Delete a share
  */
 exports.deleteShare = async (req, res, next) => {

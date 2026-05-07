@@ -4,7 +4,7 @@ import { X, UserPlus, Globe, Copy, Trash2, Shield, Mail, CheckCircle2, Link as L
 import useStore from '../../../store/useStore';
 import axios from 'axios';
 
-const ShareModal = ({ isOpen, onClose, collection }) => {
+const ShareModal = ({ isOpen, onClose, collection, folder }) => {
   const [activeTab, setActiveTab] = useState('internal');
   const [email, setEmail] = useState('');
   const [permission, setPermission] = useState('viewer');
@@ -15,15 +15,23 @@ const ShareModal = ({ isOpen, onClose, collection }) => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
 
+  const targetId = folder ? folder.id : collection?.id;
+  const targetType = folder ? 'folder' : 'collection';
+  const targetName = folder ? folder.name : collection?.name;
+
   useEffect(() => {
-    if (isOpen && collection) {
+    if (isOpen && targetId) {
       fetchShares();
     }
-  }, [isOpen, collection]);
+  }, [isOpen, targetId, targetType]);
 
   const fetchShares = async () => {
     try {
-      const response = await axios.get(`${API_URL}/shares/${collection.id}`, {
+      const url = folder 
+        ? `${API_URL}/shares/folder/${folder.id}`
+        : `${API_URL}/shares/${collection.id}`;
+
+      const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (response.data.success) {
@@ -41,7 +49,8 @@ const ShareModal = ({ isOpen, onClose, collection }) => {
     setIsLoading(true);
     try {
       const response = await axios.post(`${API_URL}/shares`, {
-        collectionId: collection.id,
+        collectionId: folder ? null : collection.id,
+        folderId: folder ? folder.id : null,
         targetEmail: email,
         permission,
         type: 'internal'
@@ -80,7 +89,8 @@ const ShareModal = ({ isOpen, onClose, collection }) => {
       setIsLoading(true);
       try {
         await axios.post(`${API_URL}/shares`, {
-          collectionId: collection.id,
+          collectionId: folder ? null : collection.id,
+          folderId: folder ? folder.id : null,
           type: 'public',
           permission: 'viewer'
         }, {
@@ -131,11 +141,11 @@ const ShareModal = ({ isOpen, onClose, collection }) => {
         <div className="p-6 border-b border-dark-800 flex items-center justify-between bg-dark-900/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-500/10 rounded-xl">
-              <UserPlus className="w-5 h-5 text-primary-500" />
+              <Globe className="w-5 h-5 text-primary-500" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-dark-100">Chia sẻ Collection</h3>
-              <p className="text-[10px] text-dark-500 uppercase tracking-widest font-bold">{collection?.name}</p>
+              <h3 className="text-lg font-bold text-dark-100">Chia sẻ {folder ? 'Thư mục' : 'Collection'}</h3>
+              <p className="text-[10px] text-dark-500 uppercase tracking-widest font-bold">{targetName}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-dark-800 rounded-full text-dark-500 transition-all">

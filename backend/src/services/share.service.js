@@ -3,45 +3,75 @@ const collectionRepository = require('../repositories/collection.repository');
 const crypto = require('crypto');
 
 class ShareService {
-  async createShare(userId, { collectionId, targetEmail, permission, type }) {
-    // Check if collection exists
-    const collection = await collectionRepository.getById(collectionId);
-    if (!collection) {
-      throw new Error('Không tìm thấy collection');
-    }
+  async createShare(userId, { collectionId, folderId, targetEmail, permission, type }) {
+    // Nếu có folderId, ưu tiên kiểm tra quyền của folder
+    if (folderId) {
+      const folder = await require('../repositories/folder.repository').findByPk(folderId);
+      if (!folder) throw new Error('Không tìm thấy thư mục');
+      
+      const collection = await collectionRepository.getById(folder.collection_id);
+      if (collection.user_id && collection.user_id !== userId) {
+        throw new Error('Bạn không có quyền chia sẻ thư mục này');
+      }
 
-    // Authorization: If user_id is set, it must match. If null, auto-assign for legacy data.
-    if (collection.user_id && collection.user_id !== userId) {
-      throw new Error('Bạn không có quyền chia sẻ collection này');
-    }
+      if (type === 'public') {
+        const existingPublic = await shareRepository.findPublicByFolder(folderId);
+        if (existingPublic) return existingPublic;
+      }
+    } else {
+      // Check if collection exists
+      const collection = await collectionRepository.getById(collectionId);
+      if (!collection) {
+        throw new Error('Không tìm thấy collection');
+      }
 
-    if (!collection.user_id) {
-      await collectionRepository.update(collectionId, { user_id: userId });
+      // Authorization
+      if (collection.user_id && collection.user_id !== userId) {
+        throw new Error('Bạn không có quyền chia sẻ collection này');
+      }
+
+      if (!collection.user_id) {
+        await collectionRepository.update(collectionId, { user_id: userId });
+      }
+
+      if (type === 'public') {
+        const existingPublic = await shareRepository.findPublicByCollection(collectionId);
+        if (existingPublic) return existingPublic;
+      }
     }
 
     let shareToken = null;
     if (type === 'public') {
-      // Check if already has a public share
-      const existingPublic = await shareRepository.findPublicByCollection(collectionId);
-      if (existingPublic) return existingPublic;
-      
       shareToken = crypto.randomBytes(20).toString('hex');
     } else {
-      // Internal share check
-      const existing = await shareRepository.findByCollectionAndEmail(collectionId, targetEmail);
-      if (existing) {
-        throw new Error('Collection đã được chia sẻ với email này');
+      // Internal share check (legacy/unused for now but keeping logic)
+      if (collectionId) {
+        const existing = await shareRepository.findByCollectionAndEmail(collectionId, targetEmail);
+        if (existing) throw new Error('Collection đã được chia sẻ với email này');
       }
     }
 
     return await shareRepository.create({
-      collection_id: collectionId,
+      collection_id: collectionId || null,
+      folder_id: folderId || null,
       user_id: userId,
       target_email: targetEmail,
       permission,
       type,
       share_token: shareToken
     });
+  }
+
+  async getSharesByFolder(userId, folderId) {
+    const folder = await require('../repositories/folder.repository').findByPk(folderId);
+    if (!folder) throw new Error('Không tìm thấy thư mục');
+
+    const collection = await collectionRepository.getById(folder.collection_id);
+    if (collection.user_id && collection.user_id !== userId) {
+      throw new Error('Bạn không có quyền xem thông tin chia sẻ của thư mục này');
+    }
+
+    return await shareRepository.findByFolderId(folderId);
   }
 
   async getShares(userId, collectionId) {
@@ -72,9 +102,25 @@ class ShareService {
 
   async getPublicCollection(token) {
     const share = await shareRepository.findPublicByToken(token);
-    if (!share || !share.collection) {
+    if (!share) {
       throw new Error('Mã chia sẻ không hợp lệ hoặc đã hết hạn');
     }
+
+    // Nếu là chia sẻ Folder
+    if (share.folder_id && share.folder) {
+      return {
+        id: share.folder.id,
+        name: share.folder.name,
+        isFolderShare: true,
+        folders: [], // Folder share doesn't show sub-folders for simplicity
+        requests: share.folder.requests || []
+      };
+    }
+
+    if (!share.collection) {
+      throw new Error('Mã chia sẻ không hợp lệ hoặc đã hết hạn');
+    }
+
     return share.collection;
   }
 }

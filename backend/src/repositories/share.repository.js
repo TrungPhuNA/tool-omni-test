@@ -2,6 +2,7 @@ const { CollectionShare, Collection, User } = require('../models');
 
 class ShareRepository {
   async findPublicByToken(token) {
+    const { Folder, Request, RequestExample } = require('../models');
     return await CollectionShare.findOne({
       where: { share_token: token, type: 'public' },
       include: [
@@ -9,11 +10,24 @@ class ShareRepository {
           model: Collection,
           as: 'collection',
           include: [
-            { model: require('../models').Folder, as: 'folders', include: [{ model: require('../models').Request, as: 'requests', include: [{ model: require('../models').RequestExample, as: 'examples' }] }] },
-            { model: require('../models').Request, as: 'requests', where: { folder_id: null }, required: false, include: [{ model: require('../models').RequestExample, as: 'examples' }] }
+            { model: Folder, as: 'folders', include: [{ model: Request, as: 'requests', include: [{ model: RequestExample, as: 'examples' }] }] },
+            { model: Request, as: 'requests', where: { folder_id: null }, required: false, include: [{ model: RequestExample, as: 'examples' }] }
+          ]
+        },
+        {
+          model: Folder,
+          as: 'folder',
+          include: [
+            { model: Request, as: 'requests', include: [{ model: RequestExample, as: 'examples' }] }
           ]
         }
       ]
+    });
+  }
+
+  async findPublicByFolder(folderId) {
+    return await CollectionShare.findOne({
+      where: { folder_id: folderId, type: 'public' }
     });
   }
 
@@ -27,6 +41,14 @@ class ShareRepository {
     const { User } = require('../models');
     return await CollectionShare.findAll({
       where: { collection_id: collectionId },
+      include: [{ model: User, as: 'sharer', attributes: ['username', 'email'] }]
+    });
+  }
+
+  async findByFolderId(folderId) {
+    const { User } = require('../models');
+    return await CollectionShare.findAll({
+      where: { folder_id: folderId },
       include: [{ model: User, as: 'sharer', attributes: ['username', 'email'] }]
     });
   }
