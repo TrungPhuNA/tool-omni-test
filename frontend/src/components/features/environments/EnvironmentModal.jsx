@@ -38,7 +38,11 @@ const EnvironmentModal = ({
             </div>
             <div className="grid gap-2">
               {environments.map(env => (
-                <div key={env.id} className="flex items-center justify-between p-3 bg-dark-800/50 rounded-xl border border-dark-700 hover:border-primary-500/30 transition-all group">
+                <div 
+                  key={env.id} 
+                  onClick={() => setEditingEnv(env)}
+                  className="flex items-center justify-between p-3 bg-dark-800/50 rounded-xl border border-dark-700 hover:border-primary-500/30 transition-all group cursor-pointer hover:bg-dark-800"
+                >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary-500/10 rounded-lg text-primary-400">
                       <Database className="w-4 h-4" />
@@ -46,10 +50,17 @@ const EnvironmentModal = ({
                     <span className="font-semibold text-sm text-dark-200">{env.name}</span>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => setEditingEnv(env)} className="p-2 hover:bg-dark-700 rounded-lg text-dark-400">
+                    <div className="p-2 text-primary-500 bg-primary-500/10 rounded-lg mr-2">
                       <Settings className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => deleteEnvironment(env.id)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-dark-400">
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteEnvironment(env.id);
+                      }} 
+                      className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-dark-400 transition-colors"
+                      title="Xoá môi trường"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
