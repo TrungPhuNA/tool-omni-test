@@ -114,8 +114,9 @@ class ShareService {
       const fetchFolderTree = async (parentFolderId) => {
         const folders = await Folder.findAll({
           where: { parent_id: parentFolderId },
+          order: [['order', 'ASC'], ['created_at', 'ASC']],
           include: [
-            { model: Request, as: 'requests', include: [{ model: RequestExample, as: 'examples' }] }
+            { model: Request, as: 'requests', separate: true, order: [['order', 'ASC'], ['created_at', 'ASC']], include: [{ model: RequestExample, as: 'examples' }] }
           ]
         });
 
