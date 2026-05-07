@@ -1,0 +1,12 @@
+services:
+  omni-backend:
+    build: .
+    container_name: omni-backend
+    restart: always
+    ports:
+      - "5005:5005"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Nếu DB trên host thì trong .env DB_HOST nên để là host.docker.internal
