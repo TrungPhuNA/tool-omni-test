@@ -1,6 +1,73 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
+const normalizeRequest = (req) => {
+    if (!req) return req;
+    const normalized = { ...req };
+    
+    let body = normalized.body;
+    
+    // Trường hợp 1: Body là String
+    if (typeof body === 'string') {
+        try {
+            const parsed = JSON.parse(body);
+            // Nếu string này thực chất là JSON của cấu trúc mới (có trường mode)
+            if (parsed && typeof parsed === 'object' && ('mode' in parsed)) {
+                body = parsed;
+            } else {
+                // String này là dữ liệu cũ hoặc JSON cũ, bọc lại thành raw
+                body = {
+                    mode: 'raw',
+                    raw: body,
+                    formData: [],
+                    urlencoded: [],
+                    options: { raw: { language: 'json' } }
+                };
+            }
+        } catch (e) {
+            // String thuần, không phải JSON, bọc lại
+            body = {
+                mode: 'raw',
+                raw: body,
+                formData: [],
+                urlencoded: [],
+                options: { raw: { language: 'json' } }
+            };
+        }
+    } 
+    // Trường hợp 2: Body là Object nhưng là kiểu cũ (thiếu trường mode)
+    else if (body && typeof body === 'object' && !('mode' in body)) {
+        body = {
+            mode: 'raw',
+            raw: JSON.stringify(body, null, 2),
+            formData: [],
+            urlencoded: [],
+            options: { raw: { language: 'json' } }
+        };
+    }
+    // Trường hợp 3: Không có body
+    else if (!body) {
+        body = {
+            mode: 'none',
+            raw: '',
+            formData: [],
+            urlencoded: [],
+            options: { raw: { language: 'json' } }
+        };
+    }
+    
+    normalized.body = body;
+    
+    // Đảm bảo các trường khác là mảng hoặc object chuẩn
+    if (!Array.isArray(normalized.params)) normalized.params = [];
+    if (!Array.isArray(normalized.headers)) normalized.headers = [];
+    if (!normalized.authConfig) {
+        normalized.authConfig = { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' };
+    }
+    
+    return normalized;
+};
+
 const useStore = create((set, get) => ({
     user: JSON.parse(localStorage.getItem('user')) || null,
     token: localStorage.getItem('token') || null,
@@ -16,7 +83,15 @@ const useStore = create((set, get) => ({
         method: 'GET',
         url: '',
         headers: [],
-        body: '',
+        body: {
+            mode: 'none',
+            raw: '',
+            formData: [],
+            urlencoded: [],
+            options: {
+                raw: { language: 'json' }
+            }
+        },
         params: [],
         authConfig: {
             enabled: false,
@@ -134,7 +209,7 @@ const useStore = create((set, get) => ({
         if (tab) {
             set({
                 activeTabId: tabId,
-                activeRequest: tab.request,
+                activeRequest: normalizeRequest(tab.request),
                 response: tab.response || null
             });
         }
@@ -169,7 +244,7 @@ const useStore = create((set, get) => ({
         const newTab = {
             id: newId,
             name: request?.name || 'New Request',
-            request: request ? { ...defaultRequest, ...request } : defaultRequest,
+            request: normalizeRequest(request ? { ...defaultRequest, ...request } : defaultRequest),
             response: null
         };
 
@@ -205,7 +280,7 @@ const useStore = create((set, get) => ({
 
     setActiveRequest: (requestUpdate) => {
         const { activeTabId, tabs, activeRequest } = get();
-        let updatedRequest = { ...activeRequest, ...requestUpdate };
+        let updatedRequest = normalizeRequest({ ...activeRequest, ...requestUpdate });
 
         // 1. Nếu URL thay đổi, đồng bộ sang Params
         if (requestUpdate.url !== undefined) {
@@ -425,12 +500,12 @@ const useStore = create((set, get) => ({
                 });
             }
 
-            const updatedRequest = {
+            const updatedRequest = normalizeRequest({
                 ...res.data.data,
                 preScript: res.data.data.preScript || res.data.data.pre_script || '',
                 postScript: res.data.data.postScript || res.data.data.post_script || '',
                 authConfig: res.data.data.authConfig || res.data.data.auth_config || { enabled: false, loginUrl: '', loginBody: '', tokenPath: 'data.token' }
-            };
+            });
 
             // Sync tabs and activeRequest
             const { activeTabId, tabs } = get();
@@ -804,12 +879,35 @@ const useStore = create((set, get) => ({
             // Tách baseUrl để tránh lặp params khi axios tự append paramsObj
             const baseUrl = activeRequest.url.split('?')[0];
 
+            // Chuẩn hóa body trước khi gửi
+            let requestBody = undefined;
+            const bodyMode = activeRequest.body?.mode || 'none';
+
+            if (bodyMode === 'raw') {
+                requestBody = activeRequest.body.raw;
+                // Nếu là JSON thì parse
+                if (activeRequest.body.options?.raw?.language === 'json' && requestBody) {
+                    try { requestBody = JSON.parse(requestBody); } catch(e) {}
+                }
+            } else if (bodyMode === 'form-data') {
+                // Tạm thời gửi object nếu không có file, sau này sẽ nâng cấp FormData xịn
+                requestBody = activeRequest.body.formData
+                    .filter(f => f.enabled && f.key)
+                    .reduce((acc, f) => ({ ...acc, [f.key]: f.value }), {});
+                headersObj['Content-Type'] = 'multipart/form-data';
+            } else if (bodyMode === 'urlencoded') {
+                requestBody = activeRequest.body.urlencoded
+                    .filter(f => f.enabled && f.key)
+                    .reduce((acc, f) => ({ ...acc, [f.key]: f.value }), {});
+                headersObj['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+
             const res = await axios.post(`${API_URL}/proxy/execute`, {
                 method: activeRequest.method,
                 url: baseUrl,
                 headers: headersObj,
                 params: paramsObj,
-                body: activeRequest.body ? JSON.parse(activeRequest.body) : undefined,
+                body: requestBody,
                 variables: variables,
                 authConfig: activeRequest.authConfig,
                 preScript: activeRequest.preScript,

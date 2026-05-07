@@ -7,6 +7,79 @@ import {
     CheckCircle2, AlertCircle, Info, Copy
 } from 'lucide-react';
 
+const normalizeRequest = (req) => {
+    if (!req) return req;
+    const normalized = { ...req };
+    
+    let body = normalized.body;
+    
+    // Trường hợp 1: Body là String
+    if (typeof body === 'string') {
+        try {
+            const parsed = JSON.parse(body);
+            if (parsed && typeof parsed === 'object' && ('mode' in parsed)) {
+                body = parsed;
+            } else {
+                body = {
+                    mode: 'raw',
+                    raw: body,
+                    formData: [],
+                    urlencoded: [],
+                    options: { raw: { language: 'json' } }
+                };
+            }
+        } catch (e) {
+            body = {
+                mode: 'raw',
+                raw: body,
+                formData: [],
+                urlencoded: [],
+                options: { raw: { language: 'json' } }
+            };
+        }
+    } 
+    // Trường hợp 2: Body là Object kiểu cũ
+    else if (body && typeof body === 'object' && !('mode' in body)) {
+        body = {
+            mode: 'raw',
+            raw: JSON.stringify(body, null, 2),
+            formData: [],
+            urlencoded: [],
+            options: { raw: { language: 'json' } }
+        };
+    }
+    // Trường hợp 3: Không có body
+    else if (!body) {
+        body = {
+            mode: 'none',
+            raw: '',
+            formData: [],
+            urlencoded: [],
+            options: { raw: { language: 'json' } }
+        };
+    }
+    
+    normalized.body = body;
+    return normalized;
+};
+
+const normalizeAllRequests = (data) => {
+    if (!data) return data;
+    
+    if (data.requests) {
+        data.requests = data.requests.map(normalizeRequest);
+    }
+    
+    if (data.folders) {
+        data.folders = data.folders.map(folder => {
+            const normalizedFolder = { ...folder };
+            return normalizeAllRequests(normalizedFolder);
+        });
+    }
+    
+    return data;
+};
+
 const PublicFolderNode = ({ folder, activeRequestId, setActiveRequest, expandedFolders, toggleFolder }) => {
     return (
         <div className="space-y-1 mt-2">
@@ -66,10 +139,11 @@ const PublicViewPage = () => {
             try {
                 const response = await axios.get(`${API_URL}/shares/public/${token}`);
                 if (response.data.success) {
-                    setCollection(response.data.data);
-                    document.title = `${response.data.data.name || 'API Documentation'} - OmniTest`;
+                    const normalizedData = normalizeAllRequests(response.data.data);
+                    setCollection(normalizedData);
+                    document.title = `${normalizedData.name || 'API Documentation'} - OmniTest`;
                     // Set first request as active if available
-                    const firstReq = response.data.data.requests?.[0] || response.data.data.folders?.[0]?.requests?.[0];
+                    const firstReq = normalizedData.requests?.[0] || normalizedData.folders?.[0]?.requests?.[0];
                     if (firstReq) setActiveRequest(firstReq);
                 }
             } catch (err) {
@@ -323,17 +397,56 @@ const PublicViewPage = () => {
                         )}
 
                         {/* Request Body */}
-                        {activeRequest.body && activeRequest.method !== 'GET' && (
+                        {activeRequest.body && activeRequest.method !== 'GET' && activeRequest.body.mode !== 'none' && (
                             <div className="space-y-4">
-                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Request Body (JSON)</h3>
-                                <div className="rounded-3xl border border-dark-800 bg-dark-900 overflow-hidden shadow-2xl">
-                                    <div className="bg-dark-800/50 px-6 py-3 border-b border-dark-800 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-dark-500 uppercase">application/json</span>
+                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                                    <FileText className="w-4 h-4 text-primary-500" />
+                                    Request Body ({activeRequest.body.mode})
+                                </h3>
+                                
+                                {activeRequest.body.mode === 'raw' && (
+                                    <div className="rounded-3xl border border-dark-800 bg-dark-900 overflow-hidden shadow-2xl">
+                                        <div className="bg-dark-800/50 px-6 py-3 border-b border-dark-800 flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-dark-500 uppercase">{activeRequest.body.options?.raw?.language || 'application/json'}</span>
+                                        </div>
+                                        <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto custom-scrollbar">
+                                            <code>{activeRequest.body.raw}</code>
+                                        </pre>
                                     </div>
-                                    <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto">
-                                        <code>{typeof activeRequest.body === 'string' ? activeRequest.body : JSON.stringify(activeRequest.body, null, 2)}</code>
-                                    </pre>
-                                </div>
+                                )}
+
+                                {(activeRequest.body.mode === 'form-data' || activeRequest.body.mode === 'urlencoded') && (
+                                    <div className="bg-dark-900 rounded-3xl border border-dark-800 overflow-hidden shadow-2xl">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-dark-800/50">
+                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Key</th>
+                                                    {activeRequest.body.mode === 'form-data' && (
+                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Type</th>
+                                                    )}
+                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Value</th>
+                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Mô tả</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-dark-800">
+                                                {(activeRequest.body.mode === 'form-data' ? activeRequest.body.formData : activeRequest.body.urlencoded)
+                                                    ?.filter(item => item.enabled !== false && item.key)
+                                                    .map((item, i) => (
+                                                        <tr key={i} className="hover:bg-dark-800/20 transition-colors">
+                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400 font-bold">{item.key}</td>
+                                                            {activeRequest.body.mode === 'form-data' && (
+                                                                <td className="px-6 py-4">
+                                                                    <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{item.type || 'text'}</span>
+                                                                </td>
+                                                            )}
+                                                            <td className="px-6 py-4 text-xs text-dark-200 break-all">{item.value || '-'}</td>
+                                                            <td className="px-6 py-4 text-xs text-dark-500 italic">{item.description || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         )}
 

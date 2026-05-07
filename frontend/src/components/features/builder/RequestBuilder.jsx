@@ -1020,7 +1020,195 @@ const RequestBuilder = ({ handleSend }) => {
                         </div>
                     )}
 
-                    {activeTab === 'body' && <BodyEditor body={activeRequest.body} onChange={(val) => setActiveRequest({ body: val })} />}
+                    {activeTab === 'body' && (
+                        <div className="flex flex-col h-full animate-fade-in space-y-4">
+                            {/* Body Type Selector */}
+                            <div className="flex items-center gap-6 px-1 py-2 border-b border-dark-800/50">
+                                {[
+                                    { id: 'none', label: 'none' },
+                                    { id: 'form-data', label: 'form-data' },
+                                    { id: 'urlencoded', label: 'x-www-form-urlencoded' },
+                                    { id: 'raw', label: 'raw' }
+                                ].map((mode) => (
+                                    <label key={mode.id} className="flex items-center gap-2 cursor-pointer group">
+                                        <div className="relative flex items-center justify-center">
+                                            <input
+                                                type="radio"
+                                                name="bodyMode"
+                                                className="sr-only"
+                                                checked={(activeRequest.body?.mode || 'none') === mode.id}
+                                                onChange={() => setActiveRequest({ 
+                                                    body: { ...activeRequest.body, mode: mode.id } 
+                                                })}
+                                            />
+                                            <div className={`w-4 h-4 rounded-full border-2 transition-all ${(activeRequest.body?.mode || 'none') === mode.id ? 'border-primary-500 bg-primary-500' : 'border-dark-600 group-hover:border-dark-500'}`}>
+                                                {(activeRequest.body?.mode || 'none') === mode.id && (
+                                                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className={`text-[11px] font-medium transition-colors ${(activeRequest.body?.mode || 'none') === mode.id ? 'text-dark-100' : 'text-dark-500 group-hover:text-dark-400'}`}>
+                                            {mode.label}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            {/* Body Content Editor */}
+                            <div className="flex-1 min-h-0">
+                                {(activeRequest.body?.mode || 'none') === 'none' && (
+                                    <div className="flex flex-col items-center justify-center h-full text-dark-600 space-y-2 opacity-50">
+                                        <Info className="w-8 h-8" />
+                                        <span className="text-xs font-medium">This request does not have a body</span>
+                                    </div>
+                                )}
+
+                                {(activeRequest.body?.mode || 'none') === 'raw' && (
+                                    <div className="h-full flex flex-col space-y-2">
+                                        <div className="flex justify-end">
+                                            <select 
+                                                className="bg-dark-800 border border-dark-700 rounded px-2 py-1 text-[10px] text-primary-400 font-bold outline-none"
+                                                value={activeRequest.body?.options?.raw?.language || 'json'}
+                                                onChange={(e) => setActiveRequest({
+                                                    body: { 
+                                                        ...activeRequest.body, 
+                                                        options: { ...activeRequest.body.options, raw: { language: e.target.value } }
+                                                    }
+                                                })}
+                                            >
+                                                <option value="json">JSON</option>
+                                                <option value="text">Text</option>
+                                                <option value="html">HTML</option>
+                                                <option value="xml">XML</option>
+                                            </select>
+                                        </div>
+                                        <BodyEditor 
+                                            body={activeRequest.body?.raw || ''} 
+                                            onChange={(val) => setActiveRequest({ 
+                                                body: { ...activeRequest.body, raw: val } 
+                                            })} 
+                                        />
+                                    </div>
+                                )}
+
+                                {((activeRequest.body?.mode || 'none') === 'form-data' || (activeRequest.body?.mode || 'none') === 'urlencoded') && (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-[30px_1.2fr_100px_1.2fr_1.5fr_40px] gap-2 px-2">
+                                            <div className=""></div>
+                                            <div className="text-[10px] uppercase font-bold text-dark-600">Key</div>
+                                            {(activeRequest.body?.mode || 'none') === 'form-data' && (
+                                                <div className="text-[10px] uppercase font-bold text-dark-600 text-center">Type</div>
+                                            )}
+                                            <div className="text-[10px] uppercase font-bold text-dark-600">Value</div>
+                                            <div className="text-[10px] uppercase font-bold text-dark-600">Description</div>
+                                            <div className=""></div>
+                                        </div>
+                                        
+                                        {(activeRequest.body?.mode === 'form-data' ? (activeRequest.body?.formData || []) : (activeRequest.body?.urlencoded || [])).map((item, idx) => (
+                                            <div key={idx} className="grid grid-cols-[30px_1.2fr_100px_1.2fr_1.5fr_40px] gap-2 items-center group animate-fade-in">
+                                                <div className="flex justify-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={item.enabled !== false}
+                                                        onChange={(e) => {
+                                                            const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                            const newList = [...(activeRequest.body[mode] || [])];
+                                                            newList[idx] = { ...newList[idx], enabled: e.target.checked };
+                                                            setActiveRequest({ body: { ...activeRequest.body, [mode]: newList } });
+                                                        }}
+                                                        className="accent-primary-500 w-3.5 h-3.5 cursor-pointer"
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Key"
+                                                    className="input-field !py-1.5"
+                                                    value={item.key || ''}
+                                                    onChange={(e) => {
+                                                        const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                        const newList = [...(activeRequest.body[mode] || [])];
+                                                        newList[idx] = { ...newList[idx], key: e.target.value };
+                                                        // Tự động thêm dòng mới nếu gõ vào dòng cuối
+                                                        if (idx === newList.length - 1 && e.target.value) {
+                                                            newList.push({ key: '', value: '', type: 'text', enabled: true, description: '' });
+                                                        }
+                                                        setActiveRequest({ body: { ...activeRequest.body, [mode]: newList } });
+                                                    }}
+                                                />
+                                                {activeRequest.body.mode === 'form-data' && (
+                                                    <div className="w-[100px]">
+                                                        <Select 
+                                                            options={[
+                                                                { value: 'text', label: 'Text' },
+                                                                { value: 'file', label: 'File' }
+                                                            ]}
+                                                            styles={customSelectStyles}
+                                                            value={{ value: item.type || 'text', label: (item.type || 'text').charAt(0).toUpperCase() + (item.type || 'text').slice(1) }}
+                                                            onChange={(opt) => {
+                                                                const newList = [...(activeRequest.body.formData || [])];
+                                                                newList[idx] = { ...newList[idx], type: opt.value };
+                                                                setActiveRequest({ body: { ...activeRequest.body, formData: newList } });
+                                                            }}
+                                                            isSearchable={false}
+                                                            menuPortalTarget={document.body}
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type={item.type === 'file' ? 'file' : 'text'}
+                                                        placeholder="Value"
+                                                        className="input-field !py-1.5"
+                                                        value={item.type === 'file' ? undefined : (item.value || '')}
+                                                        onChange={(e) => {
+                                                            const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                            const newList = [...(activeRequest.body[mode] || [])];
+                                                            newList[idx] = { ...newList[idx], value: e.target.value };
+                                                            setActiveRequest({ body: { ...activeRequest.body, [mode]: newList } });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Description"
+                                                    className="input-field !py-1.5 !bg-transparent border-transparent hover:border-dark-700 focus:bg-dark-800 focus:border-dark-700"
+                                                    value={item.description || ''}
+                                                    onChange={(e) => {
+                                                        const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                        const newList = [...(activeRequest.body[mode] || [])];
+                                                        newList[idx] = { ...newList[idx], description: e.target.value };
+                                                        setActiveRequest({ body: { ...activeRequest.body, [mode]: newList } });
+                                                    }}
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                        const newList = (activeRequest.body[mode] || []).filter((_, i) => i !== idx);
+                                                        setActiveRequest({ body: { ...activeRequest.body, [mode]: newList } });
+                                                    }}
+                                                    className="p-1.5 text-dark-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        
+                                        {(activeRequest.body.mode === 'form-data' ? (activeRequest.body?.formData || []) : (activeRequest.body?.urlencoded || [])).length === 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    const mode = activeRequest.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                    setActiveRequest({ body: { ...activeRequest.body, [mode]: [{ key: '', value: '', type: 'text', enabled: true, description: '' }] } });
+                                                }}
+                                                className="w-full py-3 border border-dashed border-dark-700 rounded-xl text-dark-500 hover:text-primary-500 hover:border-primary-500/50 transition-all text-xs font-medium"
+                                            >
+                                                + Add Row
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {activeTab === 'examples' && (
                         <div className="space-y-4 animate-fade-in">
