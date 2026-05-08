@@ -13,6 +13,9 @@ const CollectionShare = require('./CollectionShare');
 // Associations
 Collection.hasMany(Folder, { foreignKey: 'collection_id', as: 'folders' });
 Folder.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });
+ 
+User.hasMany(Collection, { foreignKey: 'user_id', as: 'collections' });
+Collection.belongsTo(User, { foreignKey: 'user_id', as: 'owner' });
 
 Collection.hasMany(Request, { foreignKey: 'collection_id', as: 'requests' });
 Request.belongsTo(Collection, { foreignKey: 'collection_id', as: 'collection' });

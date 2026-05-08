@@ -10,6 +10,11 @@ import LoadTest from './pages/LoadTest';
 import ScenarioPage from './pages/ScenarioPage';
 
 import PublicViewPage from './pages/PublicViewPage';
+import AdminLayout from './components/layout/AdminLayout';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminUserPage from './pages/admin/AdminUserPage';
+import AdminCollectionPage from './pages/admin/AdminCollectionPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
 function App() {
     const { token, logout } = useStore();
@@ -45,6 +50,14 @@ function App() {
                     <Route path="/history" element={<History />} />
                     <Route path="/performance" element={<LoadTest />} />
                     <Route path="/scenarios/:id" element={<ScenarioPage />} />
+                </Route>
+
+                {/* Admin Routes */}
+                <Route path="/admin" element={token ? <AdminLayout /> : <Navigate to="/login" />}>
+                    <Route index element={<AdminDashboardPage />} />
+                    <Route path="users" element={<AdminUserPage />} />
+                    <Route path="collections" element={<AdminCollectionPage />} />
+                    <Route path="settings" element={<AdminSettingsPage />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" />} />

@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: true, // Cho phép origin hiện tại
+        origin: true,
         methods: ['GET', 'POST'],
         credentials: true
     },
@@ -25,7 +25,6 @@ app.use(express.urlencoded({ extended: true }));
 // Socket.io connection
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
-
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
     });
@@ -43,6 +42,7 @@ const historyRoutes = require('./src/routes/history.route');
 const loadtestRoutes = require('./src/routes/loadtest.route');
 const exampleRoutes = require('./src/routes/example.route');
 const shareRoutes = require('./src/routes/share.route');
+const adminRoutes = require('./src/routes/admin.route');
 
 // Import Middleware
 const authMiddleware = require('./src/middlewares/auth.middleware');
@@ -60,6 +60,7 @@ app.use('/api/v1/history', authMiddleware, historyRoutes);
 app.use('/api/v1/loadtest', authMiddleware, loadtestRoutes);
 app.use('/api/v1/examples', authMiddleware, exampleRoutes);
 app.use('/api/v1/shares', shareRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

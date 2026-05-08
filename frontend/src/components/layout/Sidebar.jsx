@@ -24,7 +24,8 @@ import {
     Download,
     Upload,
     ArrowUp,
-    ArrowDown
+    ArrowDown,
+    ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
@@ -845,6 +846,15 @@ const Sidebar = ({
                     <History className="w-4 h-4" />
                     History
                 </button>
+                {user?.role === 'admin' && (
+                    <button
+                        onClick={() => navigate('/admin')}
+                        className="flex items-center gap-3 w-full p-2 hover:bg-indigo-500/10 rounded-lg text-sm text-indigo-400 font-bold transition-all cursor-pointer border border-indigo-500/10"
+                    >
+                        <ShieldCheck className="w-4 h-4" />
+                        Admin Panel
+                    </button>
+                )}
                 <button
                     onClick={() => setIsEnvModalOpen(true)}
                     className="flex items-center gap-3 w-full p-2 hover:bg-dark-800 rounded-lg text-sm text-dark-400 transition-all cursor-pointer"

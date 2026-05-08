@@ -54,7 +54,9 @@ class AuthController {
                     user: { 
                         id: req.user.id, 
                         username: req.user.username, 
-                        email: req.user.email 
+                        email: req.user.email,
+                        role: req.user.role,
+                        status: req.user.status
                     }
                 }
             });
