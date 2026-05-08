@@ -130,7 +130,7 @@ const ResponsePanel = ({ response, isLoading }) => {
         )}
       </div>
 
-      <div id="response-content-container" className="flex-1 overflow-hidden flex flex-col p-4 bg-dark-950/20">
+      <div id="response-content-container" className="flex-1 flex flex-col p-4 bg-dark-950/20 min-h-0 overflow-hidden">
         {!response ? (
           <div className="flex-1 flex flex-col items-center justify-center text-dark-600 gap-4 opacity-50">
             <div className="p-6 bg-dark-800 rounded-full animate-pulse">
@@ -139,9 +139,9 @@ const ResponsePanel = ({ response, isLoading }) => {
             <p className="text-sm font-medium tracking-wide uppercase opacity-50">Click "Send" to execute request</p>
           </div>
         ) : (
-          <div className="flex flex-col h-full overflow-hidden">
+          <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {activeTab === 'body' && (
-              <div className="flex-1 flex flex-col glass-card p-5 overflow-hidden animate-fade-in border border-dark-800/50 bg-dark-900/20 min-h-0">
+              <div className="flex-1 flex flex-col glass-card p-5 animate-fade-in border border-dark-800/50 bg-dark-900/20 min-h-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
                    <div className="flex items-center gap-2">
                      <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
@@ -154,8 +154,8 @@ const ResponsePanel = ({ response, isLoading }) => {
                       <Copy className="w-4 h-4" />
                    </button>
                 </div>
-                <div className="flex-1 overflow-auto custom-scrollbar">
-                  <pre className="text-[13px] font-mono leading-relaxed text-primary-50/90 selection:bg-primary-500/30">
+                <div className="flex-1 overflow-auto custom-scrollbar min-h-0">
+                  <pre className="text-[13px] font-mono leading-relaxed text-primary-50/90 selection:bg-primary-500/30 whitespace-pre-wrap break-all">
                     {JSON.stringify(response.body, null, 2)}
                   </pre>
                 </div>

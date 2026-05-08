@@ -710,7 +710,7 @@ const RequestBuilder = ({ handleSend }) => {
     };
 
     return (
-        <div className="p-6 space-y-6 flex-1 flex flex-col overflow-visible">
+        <div className="p-6 space-y-6 flex-1 flex flex-col overflow-hidden min-h-0">
             {/* Request Input Area */}
             <div className="flex gap-0 p-1 bg-dark-900 border border-dark-800 rounded-xl shadow-lg items-stretch relative z-[60]">
                 <select
