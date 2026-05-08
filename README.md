@@ -95,7 +95,7 @@ tool-omni-test/
 - SQL queries được log trong terminal backend để hỗ trợ debug (dev mode)
 - Scripts chạy trong Sandbox với object `omni` / `pm` (Postman-compatible)
 - Biến `{{VAR}}` được inject vào URL/Headers/Body trước khi gửi request
-- node scratch/migrate_scripts.js
+- docker exec -it omni-backend node src/scripts/migrate.js
 
 ---
 
