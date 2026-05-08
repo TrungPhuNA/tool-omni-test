@@ -67,7 +67,7 @@ class ProxyService {
                 method,
                 url,
                 headers,
-                data: ['GET', 'DELETE'].includes(method.toUpperCase()) ? undefined : body,
+                data: body,
                 params,
                 timeout: 30000, // 30s timeout
                 validateStatus: () => true // Nhận tất cả status code để tester tự check

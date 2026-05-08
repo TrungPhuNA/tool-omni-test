@@ -891,8 +891,11 @@ const useStore = create((set, get) => ({
 
             if (bodyMode === 'raw') {
                 requestBody = activeRequest.body.raw;
-                // Nếu là JSON thì parse
-                if (activeRequest.body.options?.raw?.language === 'json' && requestBody) {
+                // Nếu là JSON thì parse và thêm header nếu thiếu
+                if (activeRequest.body.options?.raw?.language === 'json') {
+                    if (!headersObj['Content-Type'] && !headersObj['content-type']) {
+                        headersObj['Content-Type'] = 'application/json';
+                    }
                     try { requestBody = JSON.parse(requestBody); } catch(e) {}
                 }
             } else if (bodyMode === 'form-data') {
