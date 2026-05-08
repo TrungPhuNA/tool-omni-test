@@ -593,23 +593,40 @@ const useStore = create((set, get) => ({
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
         const token = get().token;
         try {
-            // 1. Tìm source request trong collections và folders
-            let sourceReq = null;
-            get().collections.forEach(col => {
-                // Tìm trong requests trực tiếp của collection
-                const foundInCol = col.requests?.find(r => r.id === requestId);
-                if (foundInCol) sourceReq = foundInCol;
-
-                // Tìm trong các folders
-                if (!sourceReq) {
-                    col.folders?.forEach(f => {
-                        const foundInFolder = f.requests?.find(r => r.id === requestId);
-                        if (foundInFolder) sourceReq = foundInFolder;
-                    });
+            // Helper để tìm request đệ quy trong cấu trúc folder
+            const findRequestInFolders = (folders, targetId) => {
+                for (const folder of folders) {
+                    // Kiểm tra requests trong folder hiện tại
+                    const found = folder.requests?.find(r => r.id === targetId);
+                    if (found) return found;
+                    
+                    // Nếu có subFolders, tìm tiếp đệ quy
+                    if (folder.subFolders && folder.subFolders.length > 0) {
+                        const foundInSub = findRequestInFolders(folder.subFolders, targetId);
+                        if (foundInSub) return foundInSub;
+                    }
                 }
-            });
+                return null;
+            };
 
-            if (!sourceReq) return;
+            // 1. Tìm source request trong collections và folders (đệ quy)
+            let sourceReq = null;
+            for (const col of get().collections) {
+                // Tìm trong requests trực tiếp của collection
+                sourceReq = col.requests?.find(r => r.id === requestId);
+                if (sourceReq) break;
+
+                // Tìm đệ quy trong các folders
+                if (col.folders) {
+                    sourceReq = findRequestInFolders(col.folders, requestId);
+                    if (sourceReq) break;
+                }
+            }
+
+            if (!sourceReq) {
+                console.error('Không tìm thấy request nguồn để nhân bản:', requestId);
+                return;
+            }
 
             // 2. Tạo request mới với dữ liệu tương tự
             const payload = {
