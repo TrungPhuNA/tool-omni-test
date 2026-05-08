@@ -218,7 +218,15 @@ const PublicViewPage = () => {
     // Hàm render URL với highlight cho các biến {{variable}}
     const renderHighlightedUrl = (url) => {
         if (!url) return null;
-        const parts = url.split(/(\{\{.*?\}\})/g);
+        
+        let displayUrl = url;
+        try {
+            displayUrl = decodeURIComponent(url);
+        } catch (e) {
+            displayUrl = url;
+        }
+
+        const parts = displayUrl.split(/(\{\{.*?\}\})/g);
         return parts.map((part, i) => {
             if (part.startsWith('{{') && part.endsWith('}}')) {
                 return (
@@ -370,7 +378,7 @@ const PublicViewPage = () => {
                                         Endpoint
                                     </h3>
                                     <div className="p-6 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
-                                        <code className="text-primary-400 font-mono text-lg break-all">
+                                        <code className="text-primary-400 font-mono text-sm break-all">
                                             {renderHighlightedUrl(activeRequest.url)}
                                         </code>
                                         <button

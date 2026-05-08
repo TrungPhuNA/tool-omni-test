@@ -30,7 +30,9 @@ const Folder = sequelize.define('Folder', {
   }
 }, {
   tableName: 'folders',
-  timestamps: false
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Folder;

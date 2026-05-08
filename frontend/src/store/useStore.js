@@ -428,6 +428,7 @@ const useStore = create((set, get) => ({
             return res.data.data;
         } catch (err) {
             console.error('Failed to create collection', err);
+            get().showToast(err.response?.data?.message || 'Không thể tạo collection', 'danger');
         }
     },
 
@@ -442,6 +443,7 @@ const useStore = create((set, get) => ({
             return true;
         } catch (err) {
             console.error('Failed to delete collection', err);
+            get().showToast(err.response?.data?.message || 'Không thể xóa collection', 'danger');
             return false;
         }
     },
@@ -461,6 +463,7 @@ const useStore = create((set, get) => ({
             return res.data;
         } catch (err) {
             console.error('Failed to create folder', err);
+            get().showToast(err.response?.data?.message || 'Không thể tạo thư mục', 'danger');
         }
     },
 
@@ -522,6 +525,7 @@ const useStore = create((set, get) => ({
             return updatedRequest;
         } catch (err) {
             console.error('Failed to save request', err);
+            get().showToast(err.response?.data?.message || 'Không thể lưu request', 'danger');
             throw err;
         }
     },
@@ -673,6 +677,7 @@ const useStore = create((set, get) => ({
             return res.data.data;
         } catch (err) {
             console.error('Failed to save environment', err);
+            get().showToast(err.response?.data?.message || 'Không thể lưu môi trường', 'danger');
         }
     },
 
@@ -714,6 +719,7 @@ const useStore = create((set, get) => ({
             return true;
         } catch (err) {
             console.error('Failed to save example', err);
+            get().showToast(err.response?.data?.message || 'Không thể lưu mẫu phản hồi', 'danger');
             return false;
         }
     },
