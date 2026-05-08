@@ -131,8 +131,63 @@ const PublicViewPage = () => {
     const [error, setError] = useState(null);
     const [activeRequest, setActiveRequest] = useState(null);
     const [expandedFolders, setExpandedFolders] = useState({});
+    const [copiedCurl, setCopiedCurl] = useState(false);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
+
+    // Hàm tạo mã cURL từ request
+    const generateCurl = (req) => {
+        if (!req) return '';
+        
+        let url = req.url || '';
+        
+        // Inject params vào URL nếu có
+        if (req.params && req.params.length > 0) {
+            const enabledParams = req.params.filter(p => p.enabled !== false && p.key);
+            if (enabledParams.length > 0) {
+                const queryString = enabledParams.map(p => `${p.key}=${encodeURIComponent(p.value)}`).join('&');
+                url += (url.includes('?') ? '&' : '?') + queryString;
+            }
+        }
+
+        let curl = `curl --location '${url}' \\\n`;
+        curl += `--request ${req.method} \\\n`;
+
+        // Headers
+        if (req.headers && req.headers.length > 0) {
+            req.headers.forEach(h => {
+                if (h.enabled !== false && h.key) {
+                    curl += `--header '${h.key}: ${h.value}' \\\n`;
+                }
+            });
+        }
+
+        // Body
+        if (req.method !== 'GET' && req.body) {
+            if (req.body.mode === 'raw' && req.body.raw) {
+                const escapedBody = req.body.raw.replace(/'/g, "'\\''");
+                curl += `--data-raw '${escapedBody}'`;
+            } else if (req.body.mode === 'form-data' && req.body.formData) {
+                req.body.formData.forEach(f => {
+                    if (f.enabled !== false && f.key) {
+                        curl += `--form '${f.key}="${f.value}"' \\\n`;
+                    }
+                });
+                curl = curl.trim().replace(/\\$/, '');
+            } else if (req.body.mode === 'urlencoded' && req.body.urlencoded) {
+                req.body.urlencoded.forEach(f => {
+                    if (f.enabled !== false && f.key) {
+                        curl += `--data-urlencode '${f.key}=${f.value}' \\\n`;
+                    }
+                });
+                curl = curl.trim().replace(/\\$/, '');
+            }
+        } else {
+            curl = curl.trim().replace(/\\$/, '');
+        }
+
+        return curl;
+    };
 
     useEffect(() => {
         const fetchPublicData = async () => {
@@ -271,212 +326,253 @@ const PublicViewPage = () => {
 
 
             {/* Main Content - API Details */}
-            <div className="flex-1 overflow-y-auto bg-dark-950 p-12">
+            <div className="flex-1 flex overflow-hidden">
                 {activeRequest ? (
-                    <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
-                        {/* API Header */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <span className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-widest ${activeRequest.method === 'GET' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                                        activeRequest.method === 'POST' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                                            'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                                    }`}>
-                                    {activeRequest.method}
-                                </span>
-                                <h2 className="text-3xl font-black text-dark-100 tracking-tight">{activeRequest.name}</h2>
-                            </div>
-                            
-                            {/* Biến môi trường thông tin ở đầu */}
-                            {activeRequest.url?.includes('{{BASE_URL}}') && (
-                                <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-start gap-4 mb-6">
-                                    <div className="p-2 bg-orange-500/20 rounded-lg shrink-0">
-                                        <Info className="w-5 h-5 text-orange-400" />
+                    <>
+                        {/* Left Column: API Documentation */}
+                        <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
+                            <div className="max-w-3xl space-y-12 animate-fade-in">
+                                {/* API Header */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-4">
+                                        <span className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-widest ${activeRequest.method === 'GET' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                                activeRequest.method === 'POST' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                                    'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                                            }`}>
+                                            {activeRequest.method}
+                                        </span>
+                                        <h2 className="text-3xl font-black text-dark-100 tracking-tight">{activeRequest.name}</h2>
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-orange-400 mb-1">Cấu hình Base URL</h4>
-                                        <p className="text-xs text-dark-400 leading-relaxed">
-                                            API này sử dụng biến <code className="text-orange-400 font-bold">{"{{BASE_URL}}"}</code>. 
-                                            Giá trị mặc định: <span className="text-dark-200 italic">{getBaseUrlValue()}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
 
-                            <p className="text-dark-400 leading-relaxed text-lg">{activeRequest.description || 'Chưa có mô tả cho API này.'}</p>
-                        </div>
-
-                        {/* Endpoint Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                                <Terminal className="w-4 h-4 text-primary-500" />
-                                Endpoint
-                            </h3>
-                            <div className="p-6 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
-                                <code className="text-primary-400 font-mono text-lg break-all">
-                                    {renderHighlightedUrl(activeRequest.url)}
-                                </code>
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(activeRequest.url);
-                                        // Could add toast here
-                                    }}
-                                    className="p-3 hover:bg-dark-800 rounded-2xl text-dark-500 hover:text-dark-200 transition-all opacity-0 group-hover:opacity-100"
-                                >
-                                    <Copy className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Request Params & Headers Section */}
-                        {(activeRequest.params?.length > 0 || activeRequest.headers?.length > 0) && (
-                            <div className="grid grid-cols-1 gap-12">
-                                {activeRequest.params?.length > 0 && (
-                                    <div className="space-y-4">
-                                        <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Query Parameters</h3>
-                                        <div className="overflow-hidden border border-dark-800 rounded-3xl bg-dark-900/50 shadow-lg">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-dark-800/50 border-b border-dark-800">
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Tham số</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Trạng thái</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-dark-800">
-                                                    {activeRequest.params.map((p, idx) => (
-                                                        <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">
-                                                                {renderHighlightedUrl(p.key)}
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                {p.enabled ? (
-                                                                    <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-bold">Bắt buộc</span>
-                                                                ) : (
-                                                                    <span className="text-[10px] bg-dark-700 text-dark-500 px-2 py-0.5 rounded-full font-bold">Tùy chọn</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-xs text-dark-400">{p.description || '-'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeRequest.headers?.length > 0 && (
-                                    <div className="space-y-4">
-                                        <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Headers</h3>
-                                        <div className="overflow-hidden border border-dark-800 rounded-3xl bg-dark-900/50 shadow-lg">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-dark-800/50 border-b border-dark-800">
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Key</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Value</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-dark-800">
-                                                    {activeRequest.headers.map((h, idx) => (
-                                                        <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400">
-                                                                {renderHighlightedUrl(h.key)}
-                                                            </td>
-                                                            <td className="px-6 py-4 font-mono text-xs text-dark-300">
-                                                                {renderHighlightedUrl(h.value)}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-xs text-dark-400">{h.description || '-'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Request Body */}
-                        {activeRequest.body && activeRequest.method !== 'GET' && activeRequest.body.mode !== 'none' && (
-                            <div className="space-y-4">
-                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                                    <FileText className="w-4 h-4 text-primary-500" />
-                                    Request Body ({activeRequest.body.mode})
-                                </h3>
-                                
-                                {activeRequest.body.mode === 'raw' && (
-                                    <div className="rounded-3xl border border-dark-800 bg-dark-900 overflow-hidden shadow-2xl">
-                                        <div className="bg-dark-800/50 px-6 py-3 border-b border-dark-800 flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-dark-500 uppercase">{activeRequest.body.options?.raw?.language || 'application/json'}</span>
-                                        </div>
-                                        <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto custom-scrollbar">
-                                            <code>{activeRequest.body.raw}</code>
-                                        </pre>
-                                    </div>
-                                )}
-
-                                {(activeRequest.body.mode === 'form-data' || activeRequest.body.mode === 'urlencoded') && (
-                                    <div className="bg-dark-900 rounded-3xl border border-dark-800 overflow-hidden shadow-2xl">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-dark-800/50">
-                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Key</th>
-                                                    {activeRequest.body.mode === 'form-data' && (
-                                                        <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Type</th>
-                                                    )}
-                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Value</th>
-                                                    <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Mô tả</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-dark-800">
-                                                {(activeRequest.body.mode === 'form-data' ? activeRequest.body.formData : activeRequest.body.urlencoded)
-                                                    ?.filter(item => item.enabled !== false && item.key)
-                                                    .map((item, i) => (
-                                                        <tr key={i} className="hover:bg-dark-800/20 transition-colors">
-                                                            <td className="px-6 py-4 font-mono text-xs text-primary-400 font-bold">{item.key}</td>
-                                                            {activeRequest.body.mode === 'form-data' && (
-                                                                <td className="px-6 py-4">
-                                                                    <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{item.type || 'text'}</span>
-                                                                </td>
-                                                            )}
-                                                            <td className="px-6 py-4 text-xs text-dark-200 break-all">{item.value || '-'}</td>
-                                                            <td className="px-6 py-4 text-xs text-dark-500 italic">{item.description || '-'}</td>
-                                                        </tr>
-                                                    ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Examples / Responses */}
-                        {activeRequest.examples?.length > 0 && (
-                            <div className="space-y-8">
-                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Mẫu Phản Hồi (Snapshots)</h3>
-                                <div className="space-y-6">
-                                    {activeRequest.examples.map(ex => (
-                                        <div key={ex.id} className="rounded-3xl border border-dark-800 bg-dark-900 overflow-hidden shadow-2xl">
-                                            <div className="bg-dark-800/50 px-6 py-4 border-b border-dark-800 flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <FileText className="w-4 h-4 text-primary-500" />
-                                                    <span className="text-sm font-bold text-dark-200">{ex.name}</span>
-                                                </div>
-                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-bold ${ex.response_status < 400 ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-                                                    STATUS: {ex.response_status}
-                                                </span>
+                                    {/* Biến môi trường thông tin ở đầu */}
+                                    {activeRequest.url?.includes('{{BASE_URL}}') && (
+                                        <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-start gap-4 mb-6">
+                                            <div className="p-2 bg-orange-500/20 rounded-lg shrink-0">
+                                                <Info className="w-5 h-5 text-orange-400" />
                                             </div>
-                                            <pre className="p-8 text-sm font-mono text-dark-400 overflow-x-auto bg-dark-950/50">
-                                                <code>{typeof ex.response_body === 'string' ? ex.response_body : JSON.stringify(ex.response_body, null, 2)}</code>
-                                            </pre>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-orange-400 mb-1">Cấu hình Base URL</h4>
+                                                <p className="text-xs text-dark-400 leading-relaxed">
+                                                    API này sử dụng biến <code className="text-orange-400 font-bold">{"{{BASE_URL}}"}</code>. 
+                                                    Giá trị mặc định: <span className="text-dark-200 italic">{getBaseUrlValue()}</span>
+                                                </p>
+                                            </div>
                                         </div>
-                                    ))}
+                                    )}
+
+                                    <p className="text-dark-400 leading-relaxed text-lg">{activeRequest.description || 'Chưa có mô tả cho API này.'}</p>
+                                </div>
+
+                                {/* Endpoint Section */}
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                                        <Terminal className="w-4 h-4 text-primary-500" />
+                                        Endpoint
+                                    </h3>
+                                    <div className="p-6 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
+                                        <code className="text-primary-400 font-mono text-lg break-all">
+                                            {renderHighlightedUrl(activeRequest.url)}
+                                        </code>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(activeRequest.url);
+                                            }}
+                                            className="p-3 hover:bg-dark-800 rounded-2xl text-dark-500 hover:text-dark-200 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Copy className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Request Params & Headers Section */}
+                                {(activeRequest.params?.length > 0 || activeRequest.headers?.length > 0) && (
+                                    <div className="grid grid-cols-1 gap-12">
+                                        {activeRequest.params?.filter(p => p.key && p.enabled !== false).length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Query Parameters</h3>
+                                                <div className="overflow-hidden border border-dark-800 rounded-3xl bg-dark-900/50 shadow-lg">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-dark-800/50 border-b border-dark-800">
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Tham số</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Trạng thái</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-dark-800">
+                                                            {activeRequest.params.filter(p => p.key && p.enabled !== false).map((p, idx) => (
+                                                                <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
+                                                                    <td className="px-6 py-4 font-mono text-xs text-primary-400">
+                                                                        {renderHighlightedUrl(p.key)}
+                                                                    </td>
+                                                                    <td className="px-6 py-4">
+                                                                        {p.enabled ? (
+                                                                            <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-bold">Bắt buộc</span>
+                                                                        ) : (
+                                                                            <span className="text-[10px] bg-dark-700 text-dark-500 px-2 py-0.5 rounded-full font-bold">Tùy chọn</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-xs text-dark-400">{p.description || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {activeRequest.headers?.filter(h => h.key && h.enabled !== false).length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Headers</h3>
+                                                <div className="overflow-hidden border border-dark-800 rounded-3xl bg-dark-900/50 shadow-lg">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-dark-800/50 border-b border-dark-800">
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Key</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Value</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-dark-800">
+                                                            {activeRequest.headers.filter(h => h.key && h.enabled !== false).map((h, idx) => (
+                                                                <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
+                                                                    <td className="px-6 py-4 font-mono text-xs text-primary-400">
+                                                                        {renderHighlightedUrl(h.key)}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 font-mono text-xs text-dark-300">
+                                                                        {renderHighlightedUrl(h.value)}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-xs text-dark-400">{h.description || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Request Body */}
+                                {activeRequest.body && activeRequest.method !== 'GET' && activeRequest.body.mode !== 'none' && (
+                                    <div className="space-y-4">
+                                        <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                                            <FileText className="w-4 h-4 text-primary-500" />
+                                            Request Body ({activeRequest.body.mode})
+                                        </h3>
+
+                                        {activeRequest.body.mode === 'raw' && (
+                                            <div className="rounded-3xl border border-dark-800 bg-dark-900 overflow-hidden shadow-2xl">
+                                                <div className="bg-dark-800/50 px-6 py-3 border-b border-dark-800 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-dark-500 uppercase">{activeRequest.body.options?.raw?.language || 'application/json'}</span>
+                                                </div>
+                                                <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto custom-scrollbar">
+                                                    <code>{activeRequest.body.raw}</code>
+                                                </pre>
+                                            </div>
+                                        )}
+
+                                        {(activeRequest.body.mode === 'form-data' || activeRequest.body.mode === 'urlencoded') && (
+                                            <div className="bg-dark-900 rounded-3xl border border-dark-800 overflow-hidden shadow-2xl">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-dark-800/50">
+                                                            <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Key</th>
+                                                            {activeRequest.body.mode === 'form-data' && (
+                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Type</th>
+                                                            )}
+                                                            <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Value</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-dark-500 uppercase tracking-widest border-b border-dark-800">Mô tả</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-dark-800">
+                                                        {(activeRequest.body.mode === 'form-data' ? activeRequest.body.formData : activeRequest.body.urlencoded)
+                                                            ?.filter(item => item.enabled !== false && item.key)
+                                                            .map((item, i) => (
+                                                                <tr key={i} className="hover:bg-dark-800/20 transition-colors">
+                                                                    <td className="px-6 py-4 font-mono text-xs text-primary-400 font-bold">{item.key}</td>
+                                                                    {activeRequest.body.mode === 'form-data' && (
+                                                                        <td className="px-6 py-4">
+                                                                            <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{item.type || 'text'}</span>
+                                                                        </td>
+                                                                    )}
+                                                                    <td className="px-6 py-4 text-xs text-dark-200 break-all">{item.value || '-'}</td>
+                                                                    <td className="px-6 py-4 text-xs text-dark-500 italic">{item.description || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right Column: CURL & Responses */}
+                        <div className="w-[450px] border-l border-dark-800 bg-[#0b0e14] overflow-y-auto p-8 custom-scrollbar space-y-10">
+                            {/* CURL Section */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">CURL Example</h3>
+                                    <button 
+                                        onClick={() => {
+                                            const curl = generateCurl(activeRequest);
+                                            navigator.clipboard.writeText(curl);
+                                            setCopiedCurl(true);
+                                            setTimeout(() => setCopiedCurl(false), 2000);
+                                        }}
+                                        className="flex items-center gap-2 text-[10px] font-bold text-primary-500 hover:text-primary-400 transition-colors uppercase tracking-widest"
+                                    >
+                                        {copiedCurl ? (
+                                            <><CheckCircle2 className="w-3.5 h-3.5" /> Copied</>
+                                        ) : (
+                                            <><Copy className="w-3.5 h-3.5" /> Copy CURL</>
+                                        )}
+                                    </button>
+                                </div>
+                                <div className="rounded-2xl border border-dark-800 bg-dark-950/50 overflow-hidden shadow-xl">
+                                    <div className="bg-dark-900/50 px-4 py-2 border-b border-dark-800 flex items-center justify-between">
+                                        <span className="text-[9px] font-bold text-dark-500 uppercase tracking-widest">Bash / cURL</span>
+                                    </div>
+                                    <pre className="p-5 text-[11px] font-mono text-primary-300 overflow-x-auto custom-scrollbar leading-relaxed">
+                                        <code>{generateCurl(activeRequest)}</code>
+                                    </pre>
                                 </div>
                             </div>
-                        )}
-                    </div>
+
+                            {/* Responses Snapshot Section */}
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black text-dark-500 uppercase tracking-[0.2em]">Responses Snapshot</h3>
+                                {activeRequest.examples?.length > 0 ? (
+                                    <div className="space-y-6">
+                                        {activeRequest.examples.map(ex => (
+                                            <div key={ex.id} className="rounded-2xl border border-dark-800 bg-dark-950/50 overflow-hidden shadow-xl">
+                                                <div className="bg-dark-900/50 px-4 py-3 border-b border-dark-800 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="w-3.5 h-3.5 text-primary-500" />
+                                                        <span className="text-[11px] font-bold text-dark-200">{ex.name}</span>
+                                                    </div>
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${ex.response_status < 400 ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                                                        {ex.response_status}
+                                                    </span>
+                                                </div>
+                                                <pre className="p-5 text-[11px] font-mono text-dark-400 overflow-x-auto bg-dark-950/20 leading-relaxed custom-scrollbar max-h-[400px]">
+                                                    <code>{typeof ex.response_body === 'string' ? ex.response_body : JSON.stringify(ex.response_body, null, 2)}</code>
+                                                </pre>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 border border-dashed border-dark-800 rounded-2xl text-center">
+                                        <p className="text-[10px] text-dark-600 font-bold uppercase tracking-widest">Chưa có mẫu phản hồi</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+                    <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
                         <div className="w-24 h-24 bg-dark-900 rounded-full flex items-center justify-center border border-dark-800 shadow-2xl">
                             <BookOpen className="w-10 h-10 text-dark-700" />
                         </div>
