@@ -96,6 +96,7 @@ tool-omni-test/
 - Scripts chạy trong Sandbox với object `omni` / `pm` (Postman-compatible)
 - Biến `{{VAR}}` được inject vào URL/Headers/Body trước khi gửi request
 - docker exec -it omni-backend node src/scripts/migrate.js
+-  lsof -i :5005 | grep LISTEN | awk '{print $2}' | xargs kill -9
 
 ---
 
