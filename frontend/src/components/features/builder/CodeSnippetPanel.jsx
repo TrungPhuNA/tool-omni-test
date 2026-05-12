@@ -45,17 +45,38 @@ const CodeSnippetPanel = ({ onClose }) => {
     const generateSnippet = () => {
         const { method, url, headers, body } = activeRequest;
 
-        // Resolve variables in base parts
+        // 1. Resolve URL
         const fullUrl = resolveVariables(url || 'https://api.example.com');
-        const resolvedBody = resolveVariables(typeof body === 'string' ? body : JSON.stringify(body, null, 2));
+
+        // 2. Extract and Resolve Body
+        let bodyContent = '';
+        if (body) {
+            if (typeof body === 'string') {
+                bodyContent = body;
+            } else if (typeof body === 'object') {
+                if (body.mode === 'raw') {
+                    bodyContent = body.raw || '';
+                } else if (body.mode === 'form-data' || body.mode === 'urlencoded') {
+                    const data = (body.mode === 'form-data' ? body.formData : body.urlencoded) || [];
+                    bodyContent = data
+                        .filter(item => item.enabled && item.key)
+                        .map(item => `${item.key}=${item.value}`)
+                        .join('&');
+                }
+            }
+        }
+        const resolvedBody = resolveVariables(bodyContent);
 
         const enabledHeaders = headers?.filter(h => h.enabled && h.key) || [];
-        const hasJsonBody = resolvedBody && method !== 'GET';
+        const hasJsonBody = resolvedBody && method !== 'GET' && method !== 'HEAD';
 
         // Ensure Content-Type is present if there is a body
         let finalHeaders = [...enabledHeaders];
         if (hasJsonBody && !finalHeaders.find(h => h.key.toLowerCase() === 'content-type')) {
-            finalHeaders.push({ key: 'Content-Type', value: 'application/json' });
+            const isJson = (body?.options?.raw?.language === 'json') || (!body?.mode || body?.mode === 'raw');
+            if (isJson) {
+                finalHeaders.push({ key: 'Content-Type', value: 'application/json' });
+            }
         }
 
         // Resolve variables in headers
@@ -70,7 +91,7 @@ const CodeSnippetPanel = ({ onClose }) => {
                 resolvedHeaders.forEach(h => {
                     curl += ` \\\n--header '${h.key}: ${h.value}'`;
                 });
-                if (hasJsonBody) {
+                if (resolvedBody && method !== 'GET') {
                     // Escape single quotes for shell safety
                     const escapedBody = resolvedBody.replace(/'/g, "'\\''");
                     curl += ` \\\n--data-raw '${escapedBody}'`;
@@ -83,10 +104,15 @@ const CodeSnippetPanel = ({ onClose }) => {
                 resolvedHeaders.forEach((h, i) => {
                     fetchCode += `    "${h.key}": "${h.value}"${i === resolvedHeaders.length - 1 ? '' : ','}\n`;
                 });
-                fetchCode += `  }${hasJsonBody ? ',' : ''}\n`;
+                fetchCode += `  }${resolvedBody && method !== 'GET' ? ',' : ''}\n`;
 
-                if (hasJsonBody) {
-                    fetchCode += `  body: JSON.stringify(${resolvedBody})\n`;
+                if (resolvedBody && method !== 'GET') {
+                    const isJsonBody = (body?.options?.raw?.language === 'json') || (!body?.mode || body?.mode === 'raw');
+                    if (isJsonBody) {
+                        fetchCode += `  body: JSON.stringify(${resolvedBody})\n`;
+                    } else {
+                        fetchCode += `  body: "${resolvedBody.replace(/"/g, '\\"')}"\n`;
+                    }
                 }
                 fetchCode += `})\n.then(response => response.json())\n.then(result => console.log(result))\n.catch(error => console.log('error', error));`;
                 return fetchCode;
@@ -97,18 +123,28 @@ const CodeSnippetPanel = ({ onClose }) => {
                 resolvedHeaders.forEach((h, i) => {
                     axiosCode += `    '${h.key}': '${h.value}'${i === resolvedHeaders.length - 1 ? '' : ','}\n`;
                 });
-                axiosCode += `  }${hasJsonBody ? ',' : ''}\n`;
+                axiosCode += `  }${resolvedBody && method !== 'GET' ? ',' : ''}\n`;
 
-                if (hasJsonBody) {
-                    axiosCode += `  data: ${resolvedBody}\n`;
+                if (resolvedBody && method !== 'GET') {
+                    const isJsonBody = (body?.options?.raw?.language === 'json') || (!body?.mode || body?.mode === 'raw');
+                    if (isJsonBody) {
+                        axiosCode += `  data: ${resolvedBody}\n`;
+                    } else {
+                        axiosCode += `  data: '${resolvedBody.replace(/'/g, "\\'")}'\n`;
+                    }
                 }
                 axiosCode += `};\n\naxios(config)\n.then(function (response) {\n  console.log(JSON.stringify(response.data));\n})\n.catch(function (error) {\n  console.log(error);\n});`;
                 return axiosCode;
 
             case 'python':
                 let pyCode = `import requests\nimport json\n\nurl = "${fullUrl}"\n\n`;
-                if (hasJsonBody) {
-                    pyCode += `payload = json.dumps(${resolvedBody})\n`;
+                if (resolvedBody && method !== 'GET') {
+                    const isJsonBody = (body?.options?.raw?.language === 'json') || (!body?.mode || body?.mode === 'raw');
+                    if (isJsonBody) {
+                        pyCode += `payload = json.dumps(${resolvedBody})\n`;
+                    } else {
+                        pyCode += `payload = "${resolvedBody.replace(/"/g, '\\"')}"\n`;
+                    }
                 } else {
                     pyCode += `payload = {}\n`;
                 }
