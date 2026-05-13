@@ -5,6 +5,7 @@ class CollectionController {
         try {
             const userId = req.user.id;
             const userEmail = req.user.email;
+            console.log(`[CollectionController] Request from UserID: ${userId}, Email: ${userEmail}`);
             const collections = await collectionService.getAll(userId, userEmail);
             res.status(200).json({
                 status: 'success',
