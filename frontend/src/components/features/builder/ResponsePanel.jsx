@@ -1,7 +1,89 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Cpu, Copy, Save } from 'lucide-react';
+import Select from 'react-select';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
+
+const customSelectStyles = {
+  control: (base) => ({
+    ...base,
+    background: 'rgba(15, 23, 42, 0.5)', // bg-dark-950/50
+    borderColor: 'rgba(30, 41, 59, 1)',   // border-dark-800
+    minHeight: '32px',
+    height: '32px',
+    borderRadius: '0.75rem',             // rounded-xl
+    boxShadow: 'none',
+    fontSize: '10px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    cursor: 'pointer',
+    '&:hover': {
+      borderColor: 'rgba(56, 189, 248, 0.5)', 
+    }
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: '0 12px',
+    height: '32px',
+  }),
+  singleValue: (base, state) => {
+    const activeTab = state.getValue()[0]?.value;
+    let color = 'rgba(226, 232, 240, 1)';
+    if (activeTab === 'body') color = '#38bdf8'; // text-primary-400
+    else if (activeTab === 'headers') color = '#60a5fa'; // text-blue-400
+    else if (activeTab === 'console') color = '#eab308'; // text-yellow-500
+    
+    return {
+      ...base,
+      color,
+      margin: 0,
+    };
+  },
+  input: (base) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+    color: 'white',
+  }),
+  menu: (base) => ({
+    ...base,
+    background: '#0f172a',                // bg-dark-900
+    border: '1px solid rgba(30, 41, 59, 1)',
+    borderRadius: '0.75rem',
+    overflow: 'hidden',
+    zIndex: 100,
+  }),
+  option: (base, { isFocused, isSelected, data }) => {
+    let color = '#94a3b8';
+    if (isSelected) {
+      if (data.value === 'body') color = '#38bdf8';
+      else if (data.value === 'headers') color = '#60a5fa';
+      else if (data.value === 'console') color = '#eab308';
+    }
+
+    return {
+      ...base,
+      background: isSelected ? 'rgba(56, 189, 248, 0.1)' : isFocused ? 'rgba(30, 41, 59, 0.5)' : 'transparent',
+      color,
+      fontSize: '10px',
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      padding: '8px 12px',
+      cursor: 'pointer',
+      '&:active': {
+        background: 'rgba(56, 189, 248, 0.2)',
+      }
+    };
+  },
+  indicatorSeparator: () => ({ display: 'none' }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    padding: '0 8px',
+    color: '#64748b',
+    '&:hover': { color: '#94a3b8' }
+  })
+};
 
 const ResponsePanel = ({ response, isLoading }) => {
   const { activeRequest, saveExample, showToast } = useStore();
@@ -80,28 +162,29 @@ const ResponsePanel = ({ response, isLoading }) => {
         <div className="flex items-center gap-6">
           <span className="text-[10px] uppercase font-black text-dark-500 tracking-[0.2em]">Response</span>
           {response && (
-            <div className="flex bg-dark-950/50 p-1 rounded-xl border border-dark-800">
-              <button 
-                onClick={() => setActiveTab('body')}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${activeTab === 'body' ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-dark-500 hover:text-dark-200'}`}
-              >
-                Body
-              </button>
-              <button 
-                onClick={() => setActiveTab('headers')}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${activeTab === 'headers' ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-dark-500 hover:text-dark-200'}`}
-              >
-                Headers
-              </button>
-              <button 
-                onClick={() => setActiveTab('console')}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${activeTab === 'console' ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-dark-500 hover:text-dark-200'}`}
-              >
-                Console
-                {response.scriptLogs?.length > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                )}
-              </button>
+            <div className="relative flex items-center min-w-[120px]">
+              <Select
+                value={{ 
+                  value: activeTab, 
+                  label: activeTab === 'console' 
+                    ? `Console ${response.scriptLogs?.length > 0 ? `(${response.scriptLogs.length})` : ''}`
+                    : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+                }}
+                onChange={(option) => setActiveTab(option.value)}
+                options={[
+                  { value: 'body', label: 'Body' },
+                  { value: 'headers', label: 'Headers' },
+                  { 
+                    value: 'console', 
+                    label: `Console ${response.scriptLogs?.length > 0 ? `(${response.scriptLogs.length})` : ''}` 
+                  },
+                ]}
+                styles={customSelectStyles}
+                isSearchable={false}
+              />
+              {response.scriptLogs?.length > 0 && activeTab !== 'console' && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-dark-900 animate-pulse shadow-lg shadow-red-500/50 z-10"></span>
+              )}
             </div>
           )}
         </div>

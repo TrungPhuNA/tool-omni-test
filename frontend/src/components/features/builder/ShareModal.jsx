@@ -51,7 +51,7 @@ const ShareModal = ({ isOpen, onClose, collection, folder }) => {
       const response = await axios.post(`${API_URL}/shares`, {
         collectionId: folder ? null : collection.id,
         folderId: folder ? folder.id : null,
-        targetEmail: email,
+        targetEmail: email.trim(),
         permission,
         type: 'internal'
       }, {
