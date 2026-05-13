@@ -243,6 +243,14 @@ alert('Đã tạo thành công!');
 
 ---
 
+## Quy tắc bàn giao (Delivery Rules)
+
+1. **BẮT BUỘC TEST TRƯỚC KHI BÀN GIAO**: 
+   - Mọi thay đổi ở API (Backend) hoặc FE (Frontend) phải được kiểm tra kỹ lưỡng (ít nhất là lỗi cú pháp và logic cơ bản) trước khi thông báo hoàn thành cho người dùng.
+   - Không được để xảy ra lỗi `PARSE_ERROR` hoặc lỗi xung đột cổng do quên tắt service.
+
+---
+
 ## Lưu ý quan trọng
 
 1. **`useCallback` và `useMemo`**: Chỉ dùng khi có performance issue thực sự, không dùng trước khi cần

@@ -8,6 +8,8 @@ class CollectionRepository {
 
         // Find collections shared with this user's email
         let sharedCollectionIds = [];
+        let finalShares = [];
+
         if (userEmail) {
             const trimmedEmail = userEmail.trim();
             console.log(`[CollectionRepo] Querying shares for email: "${trimmedEmail}"`);
@@ -31,7 +33,7 @@ class CollectionRepository {
             console.log(`[CollectionRepo] Results found: ${shares.length}`);
             
             // Nếu không tìm thấy, thử tìm case-insensitive
-            let finalShares = shares;
+            finalShares = shares;
             if (shares.length === 0) {
                 console.log(`[CollectionRepo] No direct match, trying case-insensitive search...`);
                 finalShares = await CollectionShare.findAll({
@@ -104,7 +106,74 @@ class CollectionRepository {
             order: [['created_at', 'DESC']]
         });
 
-        return results;
+        // Nếu không có thông tin email chia sẻ, trả về kết quả thuần túy (chủ yếu là chủ sở hữu)
+        if (!userEmail || !finalShares || finalShares.length === 0) {
+            return results;
+        }
+
+        // Xử lý lọc dữ liệu cho các collection được chia sẻ (đặc biệt là chia sẻ cấp folder)
+        const processedResults = results.map(collection => {
+            const col = collection.get({ plain: true });
+            
+            // Nếu là chủ sở hữu, giữ nguyên toàn bộ nội dung
+            if (userId && col.user_id === userId) {
+                return col;
+            }
+
+            // Lấy các bản ghi chia sẻ liên quan đến collection này
+            const relevantShares = finalShares.filter(s => 
+                s.collection_id === col.id || (s.folder && s.folder.collection_id === col.id)
+            );
+
+            // 1. Nếu có ít nhất một share là cấp COLLECTION -> được xem toàn bộ
+            const isFullShare = relevantShares.some(s => s.collection_id === col.id);
+            if (isFullShare) {
+                return col;
+            }
+
+            // 2. Nếu chỉ được chia sẻ cấp FOLDER
+            const allowedRootFolderIds = relevantShares
+                .filter(s => s.folder_id && s.folder && s.folder.collection_id === col.id)
+                .map(s => s.folder_id);
+
+            if (allowedRootFolderIds.length > 0) {
+                console.log(`[CollectionRepo] Filtering folders for collection ${col.id}. Shared roots:`, allowedRootFolderIds);
+                
+                // Tìm tất cả folder con của các folder được share (đệ quy)
+                const allAllowedFolderIds = new Set();
+                const addDescendants = (folderId) => {
+                    allAllowedFolderIds.add(folderId);
+                    col.folders.forEach(f => {
+                        if (f.parent_id === folderId) {
+                            addDescendants(f.id);
+                        }
+                    });
+                };
+                
+                allowedRootFolderIds.forEach(id => addDescendants(id));
+
+                // Lọc danh sách folders
+                col.folders = col.folders.filter(f => allAllowedFolderIds.has(f.id));
+                
+                // Ẩn toàn bộ requests ở root của collection (vì chỉ share folder con)
+                col.requests = [];
+                
+                // QUAN TRỌNG: Để frontend render đúng cây thư mục từ folder được share,
+                // chúng ta coi các folder là "root" (parent_id = null) nếu cha của nó không nằm trong danh sách được phép
+                col.folders = col.folders.map(f => {
+                    if (!f.parent_id || !allAllowedFolderIds.has(f.parent_id)) {
+                        return { ...f, parent_id: null };
+                    }
+                    return f;
+                });
+
+                col.is_folder_share = true; // Gắn flag để frontend có thể nhận biết
+            }
+
+            return col;
+        });
+
+        return processedResults;
     }
 
     async getById(id) {
