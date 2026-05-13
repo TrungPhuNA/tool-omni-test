@@ -30,10 +30,11 @@ const MainLayout = () => {
         deleteFolder,
         addTab,
         toast: globalToast,
-        showToast
+        showToast,
+        expandedCollections,
+        toggleCollection
     } = useStore();
 
-    const [expandedCollections, setExpandedCollections] = useState({});
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newColName, setNewColName] = useState('');
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -131,9 +132,6 @@ const MainLayout = () => {
         fetchEnvironments();
     }, []);
 
-    const toggleCollection = (id) => {
-        setExpandedCollections(prev => ({ ...prev, [id]: !prev[id] }));
-    };
 
     const handleCreateCollection = async () => {
         if (newColName) {
@@ -221,8 +219,6 @@ const MainLayout = () => {
             <Toast toast={globalToast.visible ? globalToast : null} />
 
             <Sidebar
-                expandedCollections={expandedCollections}
-                toggleCollection={toggleCollection}
                 loadRequest={loadRequest}
                 loadScenario={loadScenario}
                 activeRequest={activeRequest}

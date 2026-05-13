@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import useStore from '../../store/useStore';
+import { TableSkeleton } from '../../components/common/Skeleton';
 
 const AdminUserPage = () => {
     const { token } = useStore();
@@ -57,13 +58,6 @@ const AdminUserPage = () => {
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -110,7 +104,14 @@ const AdminUserPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-800/50">
-                            {filteredUsers.map((user) => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="5" className="p-0">
+                                        <TableSkeleton rows={8} cols={5} />
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredUsers.map((user) => (
                                 <tr key={user.id} className="hover:bg-dark-800/30 transition-colors group">
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-4">
@@ -188,7 +189,7 @@ const AdminUserPage = () => {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )))}
                         </tbody>
                     </table>
                 </div>

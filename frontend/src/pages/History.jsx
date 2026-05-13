@@ -3,9 +3,10 @@ import { Clock, CheckCircle2, XCircle, Search, Trash2, ExternalLink, Activity, B
 import useStore from '../store/useStore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TableSkeleton } from '../components/common/Skeleton';
 
 const History = () => {
-  const { history, fetchHistory, deleteHistory } = useStore();
+  const { history, fetchHistory, deleteHistory, isLoading } = useStore();
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null); // Lưu ID cần xóa
@@ -62,7 +63,14 @@ const History = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-800/50">
-              {filteredHistory.map((item) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan="5" className="p-0">
+                    <TableSkeleton rows={10} cols={5} />
+                  </td>
+                </tr>
+              ) : (
+                filteredHistory.map((item) => (
                 <tr key={item.id} className="hover:bg-dark-800/30 transition-all group animate-fade-in">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-dark-200 font-medium font-sans">
@@ -159,7 +167,7 @@ const History = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
               {filteredHistory.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-6 py-20 text-center text-dark-600 italic font-sans">

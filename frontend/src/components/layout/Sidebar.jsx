@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
 import ExportDocModal from '../features/builder/ExportDocModal';
 import ShareModal from '../features/builder/ShareModal';
+import { SidebarSkeleton } from '../common/Skeleton';
 
 // Recursive Folder Component
 const SidebarFolder = ({ 
@@ -362,8 +363,6 @@ const SidebarRequest = ({
 };
 
 const Sidebar = ({
-    expandedCollections,
-    toggleCollection,
     loadRequest,
     loadScenario,
     activeRequest,
@@ -381,11 +380,11 @@ const Sidebar = ({
     const { 
       user, logout, collections, createFolder, deleteFolder, moveRequest, 
       deleteRequest, duplicateRequest, deleteCollection, loadExample, 
-      deleteExample, exportCollection, importCollection, reorderRequests, reorderFolders
+      deleteExample, exportCollection, importCollection, reorderRequests, reorderFolders,
+      expandedFolders, toggleFolder, expandedRequests, toggleRequest,
+      expandedCollections, toggleCollection, isLoading
     } = useStore();
     const fileInputRef = React.useRef(null);
-    const [expandedFolders, setExpandedFolders] = useState({});
-    const [expandedRequests, setExpandedRequests] = useState({});
     const [dragOverId, setDragOverId] = useState(null);
     const [exportModal, setExportModal] = useState({ isOpen: false, folder: null, requests: [] });
     const [shareModal, setShareModal] = useState({ isOpen: false, collection: null, folder: null });
@@ -427,15 +426,6 @@ const Sidebar = ({
             col.requests.length > 0
         );
     }, [collections, searchTerm]);
-
-    const toggleFolder = (id) => {
-        setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
-    };
-
-    const toggleRequest = (e, id) => {
-        e.stopPropagation();
-        setExpandedRequests(prev => ({ ...prev, [id]: !prev[id] }));
-    };
 
     const handleImportCurl = (e, collectionId, folderId = null) => {
         e.stopPropagation();
@@ -653,8 +643,11 @@ const Sidebar = ({
                         {searchTerm && <span className="text-[9px] font-bold text-primary-500/60 uppercase">{filteredCollections.length} matches</span>}
                     </div>
                     <div className="space-y-1">
-                        {filteredCollections.map((col) => (
-                            <div key={col.id}>
+                        {isLoading ? (
+                            <SidebarSkeleton />
+                        ) : (
+                            filteredCollections.map((col) => (
+                                <div key={col.id}>
                                 <div
                                     onClick={() => toggleCollection(col.id)}
                                     onDragOver={(e) => handleDragOver(e, `col-${col.id}`)}
@@ -802,7 +795,7 @@ const Sidebar = ({
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )))}
                         {filteredCollections.length === 0 && (
                             <div className="text-center py-10 px-4">
                                 <Search className="w-8 h-8 text-dark-700 mx-auto mb-3 opacity-20" />

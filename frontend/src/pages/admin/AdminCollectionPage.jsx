@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Library, User as UserIcon, Calendar, Zap, Folder, Trash2 } from 'lucide-react';
 import useStore from '../../store/useStore';
+import Skeleton from '../../components/common/Skeleton';
 
 const AdminCollectionPage = () => {
     const { token } = useStore();
@@ -25,13 +26,6 @@ const AdminCollectionPage = () => {
         fetchCollections();
     }, [token]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -41,7 +35,24 @@ const AdminCollectionPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {collections.map((col) => (
+                {loading ? (
+                    [1, 2, 3, 4].map(i => (
+                        <div key={i} className="bg-dark-900 border border-dark-800 p-6 rounded-3xl space-y-4">
+                            <div className="flex items-center gap-4">
+                                <Skeleton variant="rect" width="48px" height="48px" className="rounded-2xl" />
+                                <div className="space-y-2 flex-1">
+                                    <Skeleton variant="text" width="60%" />
+                                    <Skeleton variant="text" width="40%" className="opacity-50" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton variant="rect" height="60px" className="rounded-2xl" />
+                                <Skeleton variant="rect" height="60px" className="rounded-2xl" />
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    collections.map((col) => (
                     <div key={col.id} className="bg-dark-900 border border-dark-800 p-6 rounded-3xl hover:border-indigo-500/30 transition-all group">
                         <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-4">
@@ -86,7 +97,12 @@ const AdminCollectionPage = () => {
                             </div>
                         </div>
                     </div>
-                ))}
+                )))}
+                {!loading && collections.length === 0 && (
+                    <div className="col-span-2 py-20 text-center text-dark-500 italic">
+                        Không có dữ liệu bộ sưu tập nào.
+                    </div>
+                )}
             </div>
         </div>
     );

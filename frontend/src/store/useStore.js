@@ -71,15 +71,18 @@ const normalizeRequest = (req) => {
 const useStore = create((set, get) => ({
     user: JSON.parse(localStorage.getItem('user')) || null,
     token: localStorage.getItem('token') || null,
+    expandedCollections: JSON.parse(localStorage.getItem('expandedCollections')) || {},
+    expandedFolders: JSON.parse(localStorage.getItem('expandedFolders')) || {},
+    expandedRequests: JSON.parse(localStorage.getItem('expandedRequests')) || {},
     collections: [],
     environments: [],
     history: [],
     activeEnvironment: null,
     activeCollection: null,
-    tabs: [],
-    activeTabId: null,
     examples: [],
-    activeRequest: {
+    tabs: JSON.parse(localStorage.getItem('tabs')) || [],
+    activeTabId: localStorage.getItem('activeTabId') || null,
+    activeRequest: JSON.parse(localStorage.getItem('activeRequest')) || {
         method: 'GET',
         url: '',
         headers: [],
@@ -104,7 +107,7 @@ const useStore = create((set, get) => ({
         documentation: '',
         description: ''
     },
-    response: null,
+    response: JSON.parse(localStorage.getItem('activeResponse')) || null,
     isLoading: false,
     toast: { message: '', type: 'success', visible: false },
 
@@ -124,7 +127,28 @@ const useStore = create((set, get) => ({
     logout: () => {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
-        set({ user: null, token: null, environments: [], activeEnvironment: null, collections: [], tabs: [], activeTabId: null });
+        localStorage.removeItem('expandedCollections');
+        localStorage.removeItem('expandedFolders');
+        localStorage.removeItem('expandedRequests');
+        localStorage.removeItem('activeTabId');
+        localStorage.removeItem('activeRequest');
+        localStorage.removeItem('activeResponse');
+        localStorage.removeItem('tabs');
+        
+        set({ 
+            user: null, 
+            token: null, 
+            environments: [], 
+            activeEnvironment: null, 
+            collections: [], 
+            tabs: [], 
+            activeTabId: null,
+            activeRequest: null,
+            response: null,
+            expandedCollections: {},
+            expandedFolders: {},
+            expandedRequests: {}
+        });
     },
 
     exportCollection: (id) => {
@@ -203,10 +227,34 @@ const useStore = create((set, get) => ({
     setCollections: (collections) => set({ collections }),
     setActiveCollection: (activeCollection) => set({ activeCollection }),
 
+    toggleCollection: (id) => {
+        const current = get().expandedCollections;
+        const updated = { ...current, [id]: !current[id] };
+        localStorage.setItem('expandedCollections', JSON.stringify(updated));
+        set({ expandedCollections: updated });
+    },
+
+    toggleFolder: (id) => {
+        const current = get().expandedFolders;
+        const updated = { ...current, [id]: !current[id] };
+        localStorage.setItem('expandedFolders', JSON.stringify(updated));
+        set({ expandedFolders: updated });
+    },
+
+    toggleRequest: (id) => {
+        const current = get().expandedRequests;
+        const updated = { ...current, [id]: !current[id] };
+        localStorage.setItem('expandedRequests', JSON.stringify(updated));
+        set({ expandedRequests: updated });
+    },
+
     setActiveTab: (tabId) => {
         const { tabs } = get();
         const tab = tabs.find(t => t.id === tabId);
         if (tab) {
+            localStorage.setItem('activeTabId', tabId);
+            localStorage.setItem('activeRequest', JSON.stringify(normalizeRequest(tab.request)));
+            localStorage.setItem('activeResponse', JSON.stringify(tab.response || null));
             set({
                 activeTabId: tabId,
                 activeRequest: normalizeRequest(tab.request),
@@ -248,8 +296,14 @@ const useStore = create((set, get) => ({
             response: null
         };
 
+        const newTabs = [...tabs, newTab];
+        localStorage.setItem('tabs', JSON.stringify(newTabs));
+        localStorage.setItem('activeTabId', newId);
+        localStorage.setItem('activeRequest', JSON.stringify(newTab.request));
+        localStorage.setItem('activeResponse', JSON.stringify(null));
+
         set({
-            tabs: [...tabs, newTab],
+            tabs: newTabs,
             activeTabId: newId,
             activeRequest: newTab.request,
             response: null
@@ -261,12 +315,21 @@ const useStore = create((set, get) => ({
         const newTabs = tabs.filter(t => t.id !== tabId);
 
         if (newTabs.length === 0) {
+            localStorage.removeItem('tabs');
+            localStorage.removeItem('activeTabId');
+            localStorage.removeItem('activeRequest');
+            localStorage.removeItem('activeResponse');
             set({ tabs: [], activeTabId: null, activeRequest: null, response: null });
             return;
         }
 
+        localStorage.setItem('tabs', JSON.stringify(newTabs));
+
         if (activeTabId === tabId) {
             const lastTab = newTabs[newTabs.length - 1];
+            localStorage.setItem('activeTabId', lastTab.id);
+            localStorage.setItem('activeRequest', JSON.stringify(lastTab.request));
+            localStorage.setItem('activeResponse', JSON.stringify(lastTab.response || null));
             set({
                 tabs: newTabs,
                 activeTabId: lastTab.id,
@@ -322,6 +385,9 @@ const useStore = create((set, get) => ({
             t.id === activeTabId ? { ...t, request: updatedRequest, name: requestUpdate.name || t.name } : t
         );
 
+        localStorage.setItem('tabs', JSON.stringify(newTabs));
+        localStorage.setItem('activeRequest', JSON.stringify(updatedRequest));
+
         set({
             activeRequest: updatedRequest,
             tabs: newTabs
@@ -333,6 +399,8 @@ const useStore = create((set, get) => ({
         const newTabs = tabs.map(t =>
             t.id === activeTabId ? { ...t, response } : t
         );
+        localStorage.setItem('tabs', JSON.stringify(newTabs));
+        localStorage.setItem('activeResponse', JSON.stringify(response));
         set({ response, tabs: newTabs });
     },
 

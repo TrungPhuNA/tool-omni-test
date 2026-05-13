@@ -26,9 +26,10 @@ function injectVariables(template, variables) { ... }
 ```
 
 ### 2. Nguyên tắc làm việc với AI
-- AI **chỉ làm đúng yêu cầu**, không tự ý refactor hoặc tối ưu thêm
-- Trước khi sửa code liên quan (ngoài phạm vi task), AI phải **hỏi xác nhận**
-- Giữ nguyên toàn bộ comment và docstring không liên quan đến task
+- AI **chỉ làm đúng yêu cầu**, không tự ý refactor hoặc tối ưu thêm.
+- Trước khi sửa code liên quan (ngoài phạm vi task), AI phải **hỏi xác nhận**.
+- **BẮT BUỘC TEST TRƯỚC KHI BÀN GIAO**: Trước khi báo cáo hoàn thành, AI phải tự kiểm tra lại code (ít nhất là check lỗi cú pháp bằng cách view file sau khi sửa hoặc chạy lệnh build/lint nếu có).
+- Giữ nguyên toàn bộ comment và docstring không liên quan đến task.
 
 ### 3. Git Flow
 ```
@@ -315,38 +316,31 @@ Chi tiết → [`git-and-db.md`](./git-and-db.md)
 | 3 | **Dùng Toast Notification** (Success/Error/Warning) | Feedback không xâm lấn, tự động biến mất |
 | 4 | **Animation mượt mà** — dùng CSS transition hoặc Framer Motion | Cảm giác "sống", premium |
 | 5 | **Không dùng màu mặc định** — dùng palette thống nhất | Giao diện chuyên nghiệp, không generic |
+| 6 | **Sử dụng Loading Skeleton** cho danh sách/vùng nội dung lớn | Tránh layout shift, cảm giác mượt mà |
 
 ### Cách dùng đúng
 
 ```jsx
+// ✅ ĐÚNG: Sử dụng Loading Skeleton cho danh sách
+{isLoading ? (
+  <TableSkeleton rows={10} cols={5} />
+) : (
+  data.map(item => <Row key={item.id} data={item} />)
+)}
+
 // ✅ ĐÚNG: Modal tùy chỉnh
 import Modal from '../ui/Modal';
-<Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Xác nhận xóa">
-  <p>Bạn có chắc muốn xóa collection <strong>{name}</strong>?</p>
-  <div className="flex gap-2 mt-4">
-    <button onClick={handleDelete} className="btn-danger">Xóa</button>
-    <button onClick={() => setIsOpen(false)} className="btn-secondary">Hủy</button>
-  </div>
-</Modal>
-
-// ❌ SAI: Dùng browser native dialog
-if (window.confirm('Bạn có chắc?')) { handleDelete(); }
-
-// ✅ ĐÚNG: Toast notification
-const { showToast } = useToast();
-showToast({ type: 'success', message: 'Đã tạo collection thành công!' });
-showToast({ type: 'error',   message: 'Kết nối server thất bại. Thử lại sau.' });
-showToast({ type: 'warning', message: 'Chưa chọn môi trường, dùng giá trị mặc định.' });
-
-// ❌ SAI: Browser alert
-alert('Tạo thành công!');
+...
 ```
 
 ### Checklist UX trước khi submit code
 
 ```
 □ Không có window.alert/confirm/prompt nào trong code
-□ Loading state hiển thị khi đang gọi API (spinner hoặc skeleton)
+□ Loading state hiển thị khi đang gọi API:
+  - Skeletons cho danh sách/vùng nội dung lớn (Sidebar, Table, Grid)
+  - Spinner cho các nút bấm đang xử lý action
+□ "Dữ liệu loading thế nào thì skeleton phải như thế đó" (Tránh layout shift)
 □ Empty state có UI rõ ràng (không để trang trắng)
 □ Error state hiển thị toast hoặc inline message
 □ Hover/focus state cho tất cả interactive elements

@@ -3,6 +3,7 @@ import { Clock, Cpu, Copy, Save } from 'lucide-react';
 import Select from 'react-select';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
+import { ResponseSkeleton } from '../../common/Skeleton';
 
 const customSelectStyles = {
   control: (base) => ({
@@ -214,7 +215,9 @@ const ResponsePanel = ({ response, isLoading }) => {
       </div>
 
       <div id="response-content-container" className="flex-1 flex flex-col p-4 bg-dark-950/20 min-h-0 overflow-hidden">
-        {!response ? (
+        {isLoading ? (
+          <ResponseSkeleton />
+        ) : !response ? (
           <div className="flex-1 flex flex-col items-center justify-center text-dark-600 gap-4 opacity-50">
             <div className="p-6 bg-dark-800 rounded-full animate-pulse">
               <Cpu className="w-12 h-12" />

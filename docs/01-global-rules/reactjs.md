@@ -215,6 +215,34 @@ alert('Đã tạo thành công!');
 
 ---
 
+## Trải nghiệm Loading (Skeletons & Spinners)
+
+Để tăng trải nghiệm người dùng (UX), tất cả các thao tác tải dữ liệu từ API phải có trạng thái loading rõ ràng:
+
+1. **Sử dụng Skeleton**: 
+   - Ưu tiên sử dụng Skeleton cho các danh sách (Sidebar, Table, Grid) và các vùng nội dung lớn.
+   - Cấu trúc của Skeleton phải khớp với cấu trúc của dữ liệu thực tế (vị trí icon, dòng chữ, bố cục).
+   - Sử dụng thành phần `Skeleton` từ `@/components/common/Skeleton`.
+
+```jsx
+// Ví dụ sử dụng trong danh sách
+{isLoading ? (
+  <TableSkeleton rows={10} cols={5} />
+) : (
+  data.map(item => <Row key={item.id} data={item} />)
+)}
+```
+
+2. **Sử dụng Spinner**: 
+   - Dùng cho các nút bấm (Button) khi đang thực hiện action (Gửi request, Lưu dữ liệu).
+   - Không làm thay đổi kích thước của nút khi hiện spinner.
+
+3. **Nguyên tắc**: 
+   - Không để màn hình trắng hoặc trống không khi đang tải dữ liệu.
+   - "Dữ liệu loading thế nào thì skeleton phải như thế đó" để tránh nhảy giao diện (layout shift).
+
+---
+
 ## Lưu ý quan trọng
 
 1. **`useCallback` và `useMemo`**: Chỉ dùng khi có performance issue thực sự, không dùng trước khi cần
