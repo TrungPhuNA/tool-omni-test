@@ -338,7 +338,7 @@ const PublicViewPage = () => {
                 {activeRequest ? (
                     <>
                         {/* Left Column: API Documentation */}
-                        <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                             <div className="max-w-3xl space-y-12 animate-fade-in">
                                 {/* API Header */}
                                 <div className="space-y-4">
@@ -377,7 +377,7 @@ const PublicViewPage = () => {
                                         <Terminal className="w-4 h-4 text-primary-500" />
                                         Endpoint
                                     </h3>
-                                    <div className="p-6 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
+                                    <div className="p-4 px-5 bg-dark-900 rounded-3xl border border-dark-800 flex items-center justify-between group shadow-xl">
                                         <code className="text-primary-400 font-mono text-sm break-all">
                                             {renderHighlightedUrl(activeRequest.url)}
                                         </code>
@@ -402,15 +402,15 @@ const PublicViewPage = () => {
                                                     <table className="w-full text-left border-collapse">
                                                         <thead>
                                                             <tr className="bg-dark-800/50 border-b border-dark-800">
-                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Tham số</th>
-                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Trạng thái</th>
-                                                                <th className="px-6 py-4 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
+                                                                <th className="px-5 py-3 text-[10px] font-black text-dark-400 uppercase tracking-widest">Tham số</th>
+                                                                <th className="px-5 py-3 text-[10px] font-black text-dark-400 uppercase tracking-widest">Trạng thái</th>
+                                                                <th className="px-5 py-3 text-[10px] font-black text-dark-400 uppercase tracking-widest">Mô tả</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-dark-800">
                                                             {activeRequest.params.filter(p => p.key && p.enabled !== false).map((p, idx) => (
                                                                 <tr key={idx} className="hover:bg-dark-800/30 transition-colors">
-                                                                    <td className="px-6 py-4 font-mono text-xs text-primary-400">
+                                                                    <td className="px-5 py-3 font-mono text-xs text-primary-400">
                                                                         {renderHighlightedUrl(p.key)}
                                                                     </td>
                                                                     <td className="px-6 py-4">
@@ -474,7 +474,7 @@ const PublicViewPage = () => {
                                                 <div className="bg-dark-800/50 px-6 py-3 border-b border-dark-800 flex items-center justify-between">
                                                     <span className="text-[10px] font-bold text-dark-500 uppercase">{activeRequest.body.options?.raw?.language || 'application/json'}</span>
                                                 </div>
-                                                <pre className="p-8 text-sm font-mono text-dark-300 overflow-x-auto custom-scrollbar">
+                                                <pre className="p-6 text-sm font-mono text-dark-300 overflow-x-auto custom-scrollbar">
                                                     <code>{activeRequest.body.raw}</code>
                                                 </pre>
                                             </div>
@@ -518,7 +518,7 @@ const PublicViewPage = () => {
                         </div>
 
                         {/* Right Column: CURL & Responses */}
-                        <div className="w-[450px] border-l border-dark-800 bg-[#0b0e14] overflow-y-auto p-8 custom-scrollbar space-y-10">
+                        <div className="w-[450px] border-l border-dark-800 bg-[#0b0e14] overflow-y-auto p-6 custom-scrollbar space-y-10">
                             {/* CURL Section */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
@@ -572,7 +572,7 @@ const PublicViewPage = () => {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-8 border border-dashed border-dark-800 rounded-2xl text-center">
+                                    <div className="p-6 border border-dashed border-dark-800 rounded-2xl text-center">
                                         <p className="text-[10px] text-dark-600 font-bold uppercase tracking-widest">Chưa có mẫu phản hồi</p>
                                     </div>
                                 )}

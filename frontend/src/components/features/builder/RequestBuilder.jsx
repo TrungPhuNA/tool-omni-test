@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info } from 'lucide-react';
+import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info, Zap } from 'lucide-react';
 import Select from 'react-select';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
@@ -327,8 +327,43 @@ const BodyEditor = ({ body, onChange }) => {
     );
 };
 
-const DocsTab = ({ request, onChange }) => {
+const DocsTab = ({ request, onChange, examples, saveExample, updateExample, deleteExample }) => {
     const [isEditing, setIsEditing] = useState(false);
+    
+    const generateAutoDocs = () => {
+        let doc = `# ${request.name || 'API Documentation'}\n\n`;
+        doc += `Đây là tài liệu hướng dẫn cho API \`${request.name}\`. \n\n`;
+        doc += `## Endpoint\n\n`;
+        doc += `\`${request.method}\` \`${request.url}\` \n\n`;
+        
+        const enabledParams = request.params?.filter(p => p.key && p.enabled) || [];
+        if (enabledParams.length > 0) {
+            doc += `## Query Parameters\n\n`;
+            enabledParams.forEach(p => {
+                doc += `- \`${p.key}\` (${p.type || 'string'}): ${p.description || 'Chưa có mô tả'}${p.required ? ' **(Bắt buộc)**' : ''}\n`;
+            });
+            doc += `\n`;
+        }
+        
+        const enabledHeaders = request.headers?.filter(h => h.key && h.enabled) || [];
+        if (enabledHeaders.length > 0) {
+            doc += `## Headers\n\n`;
+            enabledHeaders.forEach(h => {
+                doc += `- \`${h.key}\`: ${h.description || 'Chưa có mô tả'}${h.required ? ' **(Bắt buộc)**' : ''}\n`;
+            });
+            doc += `\n`;
+        }
+        
+        if (request.body && request.body.mode !== 'none') {
+            doc += `## Request Body\n\n`;
+            const bodyStr = typeof request.body === 'string' ? request.body : 
+                            (request.body.mode === 'raw' ? request.body.raw : JSON.stringify(request.body, null, 2));
+            doc += `\`\`\`json\n${bodyStr}\n\`\`\`\n\n`;
+        }
+        
+        onChange({ documentation: doc });
+    };
+
     
     const enabledParams = request.params?.filter(p => p.key && p.enabled) || [];
     const enabledHeaders = request.headers?.filter(h => h.key && h.enabled) || [];
@@ -393,6 +428,14 @@ const DocsTab = ({ request, onChange }) => {
                     <p className="text-[10px] text-dark-500 font-medium uppercase tracking-wider italic">Trình chỉnh sửa tài liệu tích hợp toàn diện</p>
                 </div>
                 <div className="flex gap-2">
+                    {isEditing && (
+                        <button 
+                            onClick={generateAutoDocs}
+                            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight px-4 py-2 rounded-xl bg-primary-500/10 text-primary-500 hover:bg-primary-500/20 transition-all border border-primary-500/20"
+                        >
+                            <Zap className="w-3.5 h-3.5" /> Generate from Request
+                        </button>
+                    )}
                     <button 
                         onClick={() => setIsEditing(!isEditing)}
                         className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight px-4 py-2 rounded-xl transition-all shadow-lg ${
@@ -408,9 +451,9 @@ const DocsTab = ({ request, onChange }) => {
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 space-y-10 pb-10">
+            <div className="flex-1 min-h-0 space-y-7 pb-10">
                 {/* 1. Main Documentation (Markdown) */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                     <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
                         Introduction & Usage
@@ -435,34 +478,57 @@ const DocsTab = ({ request, onChange }) => {
                             />
                         </div>
                     ) : (
-                        <div className="relative bg-dark-900/40 p-8 rounded-2xl border border-dark-800/50 shadow-inner">
+                        <div className="relative bg-dark-900/40 p-5 rounded-2xl border border-dark-800/50 shadow-inner">
                             {request.documentation ? (
                                 <div 
-                                    className="prose prose-invert prose-sm max-w-none text-dark-300 leading-7"
+                                    className="prose prose-invert prose-sm max-w-none text-dark-300 leading-6"
                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(request.documentation) }}
                                 />
                             ) : (
-                                <p className="text-sm text-dark-500 italic text-center py-4">Chưa có nội dung giới thiệu.</p>
+                                <p className="text-sm text-dark-500 italic text-center py-2">Chưa có nội dung giới thiệu.</p>
                             )}
                         </div>
                     )}
                 </div>
 
-                <div className="h-px bg-dark-800/30" />
+                <div className="h-px bg-dark-800/20" />
 
                 {/* 2. Endpoint Information */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                     <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
                         Endpoint Detail
                     </h3>
-                    <div className="flex items-center gap-4 p-5 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-sm shadow-inner group">
-                        <span className={`px-3 py-1 rounded-lg text-[11px] font-black tracking-widest ${
-                            request.method === 'GET' ? 'bg-green-500/10 text-green-500' :
-                            request.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
-                        }`}>{request.method}</span>
-                        <span dangerouslySetInnerHTML={{ __html: renderVariables(request.url || 'No URL', useStore.getState().activeEnvironment, 'url-main-input') }}></span>
-                    </div>
+                    {isEditing ? (
+                        <div className="flex items-center gap-4 p-4 bg-dark-950/50 border border-dark-800 rounded-2xl shadow-inner">
+                            <select 
+                                className="bg-dark-800 border border-dark-700 rounded-lg px-3 py-1.5 text-xs text-primary-400 font-bold outline-none cursor-pointer"
+                                value={request.method}
+                                onChange={(e) => onChange({ method: e.target.value })}
+                            >
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="PATCH">PATCH</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                            <input 
+                                type="text"
+                                className="flex-1 bg-dark-800/50 border border-dark-700 rounded-lg px-4 py-1.5 text-sm font-mono text-dark-100 outline-none focus:ring-1 focus:ring-primary-500/50 transition-all"
+                                value={request.url}
+                                placeholder="https://api.example.com/v1/resource"
+                                onChange={(e) => onChange({ url: e.target.value })}
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-4 p-4 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-sm shadow-inner group">
+                            <span className={`px-3 py-1 rounded-lg text-[11px] font-black tracking-widest ${
+                                request.method === 'GET' ? 'bg-green-500/10 text-green-500' :
+                                request.method === 'POST' ? 'bg-blue-500/10 text-blue-500' : 'bg-yellow-500/10 text-yellow-500'
+                            }`}>{request.method}</span>
+                            <span className="text-dark-200" dangerouslySetInnerHTML={{ __html: renderVariables(request.url || 'No URL', useStore.getState().activeEnvironment, 'url-main-input') }}></span>
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. Headers Table */}
@@ -485,9 +551,9 @@ const DocsTab = ({ request, onChange }) => {
                                 <tbody className="text-dark-200">
                                     {request.headers.map((h, i) => h.enabled && h.key && (
                                         <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
-                                            <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{h.key}</td>
-                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(h.value, useStore.getState().activeEnvironment, 'header-value-input-' + i) }}></td>
-                                            <td className="px-5 py-4 text-center">
+                                            <td className="px-5 py-2.5 font-mono text-[11px] text-primary-400 font-bold">{h.key}</td>
+                                            <td className="px-5 py-2.5 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(h.value, useStore.getState().activeEnvironment, 'header-value-input-' + i) }}></td>
+                                            <td className="px-5 py-2.5 text-center">
                                                 {isEditing ? (
                                                     <input 
                                                         type="checkbox"
@@ -501,7 +567,7 @@ const DocsTab = ({ request, onChange }) => {
                                                         <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-600 text-[9px] font-black uppercase tracking-tighter border border-dark-700">Optional</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4">
+                                            <td className="px-5 py-2.5">
                                                 {isEditing ? (
                                                     <input 
                                                         type="text"
@@ -543,8 +609,8 @@ const DocsTab = ({ request, onChange }) => {
                                 <tbody className="text-dark-200">
                                     {request.params.map((p, i) => p.enabled && p.key && (
                                         <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
-                                            <td className="px-5 py-4 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
-                                            <td className="px-5 py-4 text-center">
+                                            <td className="px-5 py-2.5 font-mono text-[11px] text-primary-400 font-bold">{p.key}</td>
+                                            <td className="px-5 py-2.5 text-center">
                                                 {isEditing ? (
                                                     <div className="w-[100px] mx-auto">
                                                         <Select 
@@ -560,8 +626,8 @@ const DocsTab = ({ request, onChange }) => {
                                                     <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-400 text-[9px] font-bold uppercase tracking-tighter border border-dark-700">{p.type || 'string'}</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(p.value, useStore.getState().activeEnvironment, 'param-value-input-' + i) }}></td>
-                                            <td className="px-5 py-4 text-center">
+                                            <td className="px-5 py-2.5 font-mono text-[11px] text-dark-400" dangerouslySetInnerHTML={{ __html: renderVariables(p.value, useStore.getState().activeEnvironment, 'param-value-input-' + i) }}></td>
+                                            <td className="px-5 py-2.5 text-center">
                                                 {isEditing ? (
                                                     <input 
                                                         type="checkbox"
@@ -575,7 +641,7 @@ const DocsTab = ({ request, onChange }) => {
                                                         <span className="px-2 py-0.5 rounded bg-dark-800 text-dark-600 text-[9px] font-black uppercase tracking-tighter border border-dark-700">Optional</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4">
+                                            <td className="px-5 py-2.5">
                                                 {isEditing ? (
                                                     <input 
                                                         type="text"
@@ -597,28 +663,194 @@ const DocsTab = ({ request, onChange }) => {
                 )}
                 
                 {/* 5. Request Body */}
-                {request.body && (
-                    <div className="space-y-3">
+                {request.body && request.body.mode !== 'none' && (
+                    <div className="space-y-2">
                         <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
-                            Request Body JSON
+                            Request Body ({request.body.mode})
                         </h3>
-                        <div className="relative group">
-                            {isEditing ? (
-                                <textarea
-                                    className="w-full bg-dark-950/50 border border-dark-800 rounded-2xl p-6 font-mono text-[12px] text-emerald-400 outline-none focus:ring-2 focus:ring-primary-500/30 min-h-[200px] custom-scrollbar shadow-inner"
-                                    value={typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)}
-                                    onChange={(e) => onChange({ body: e.target.value })}
-                                />
-                            ) : (
-                                <pre className="p-6 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-[12px] text-emerald-400 overflow-auto shadow-inner custom-scrollbar max-h-[400px]">
-                                    {typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)}
-                                </pre>
-                            )}
-                            <div className="absolute top-4 right-4 text-[9px] text-dark-600 font-bold uppercase tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">JSON</div>
-                        </div>
+
+                        {request.body.mode === 'raw' ? (
+                            <div className="relative group">
+                                {isEditing ? (
+                                    <textarea
+                                        className="w-full bg-dark-950/50 border border-dark-800 rounded-2xl p-4 font-mono text-[12px] text-emerald-400 outline-none focus:ring-2 focus:ring-primary-500/30 min-h-[150px] custom-scrollbar shadow-inner"
+                                        value={request.body.raw || ''}
+                                        onChange={(e) => onChange({ body: { ...request.body, raw: e.target.value } })}
+                                    />
+                                ) : (
+                                    <pre className="p-5 bg-dark-950/50 border border-dark-800 rounded-2xl font-mono text-[12px] text-emerald-400 overflow-auto shadow-inner custom-scrollbar max-h-[300px]">
+                                        {request.body.raw || ''}
+                                    </pre>
+                                )}
+                                <div className="absolute top-3 right-3 text-[9px] text-dark-600 font-bold uppercase tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">
+                                    {request.body.options?.raw?.language?.toUpperCase() || 'TEXT'}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="overflow-hidden border border-dark-800 rounded-2xl bg-dark-900/30">
+                                <table className="w-full text-left text-sm border-collapse">
+                                    <thead className="bg-dark-800/50 text-dark-500 text-[9px] uppercase font-black tracking-wider">
+                                        <tr>
+                                            <th className="px-5 py-2.5">Key</th>
+                                            <th className="px-5 py-2.5">Value</th>
+                                            <th className="px-5 py-2.5">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-dark-200">
+                                        {(request.body[request.body.mode === 'form-data' ? 'formData' : 'urlencoded'] || [])
+                                            .filter(f => f.enabled && f.key)
+                                            .map((f, i) => (
+                                            <tr key={i} className="hover:bg-dark-800/40 transition-colors border-t border-dark-800/50">
+                                                <td className="px-5 py-3 font-mono text-[11px] text-primary-400 font-bold">{f.key}</td>
+                                                <td className="px-5 py-3 font-mono text-[11px] text-dark-400">{f.value}</td>
+                                                <td className="px-5 py-3">
+                                                    {isEditing ? (
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full bg-dark-800/50 border border-dark-700 rounded-lg px-3 py-1 text-xs text-dark-100 outline-none focus:ring-1 focus:ring-primary-500/50"
+                                                            placeholder="Mô tả..."
+                                                            value={f.description || ''}
+                                                            onChange={(e) => {
+                                                                const mode = request.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                                                                const newList = [...request.body[mode]];
+                                                                const realIdx = request.body[mode].findIndex(item => item.key === f.key);
+                                                                if (realIdx !== -1) {
+                                                                    newList[realIdx].description = e.target.value;
+                                                                    onChange({ body: { ...request.body, [mode]: newList } });
+                                                                }
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-xs text-dark-500 italic">{f.description || '-'}</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
+
+                <div className="h-px bg-dark-800/30" />
+
+                {/* 6. Response Examples (Saved/Mock) */}
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-dark-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                            Response Examples / Mockups
+                        </h3>
+                        {isEditing && (
+                            <button 
+                                onClick={() => saveExample({
+                                    request_id: request.id,
+                                    name: 'New Mock Response',
+                                    response_status: 200,
+                                    response_body: { message: "Mock success" },
+                                    response_headers: { "Content-Type": "application/json" },
+                                    response_time: 100
+                                })}
+                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-500 transition-all shadow-lg"
+                            >
+                                <Plus className="w-3.5 h-3.5" /> Add Mock Response
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        {(examples || []).length > 0 ? (
+                            examples.map((ex, idx) => (
+                                <div key={idx} className="bg-dark-900/30 border border-dark-800 rounded-2xl overflow-hidden">
+                                    <div className="flex items-center justify-between p-4 bg-dark-800/30">
+                                        <div className="flex items-center gap-4 flex-1">
+                                            {isEditing ? (
+                                                <input 
+                                                    type="text"
+                                                    className="bg-dark-800 border border-dark-700 rounded px-2 py-1 text-sm text-dark-100 outline-none focus:ring-1 focus:ring-primary-500/50 min-w-[200px]"
+                                                    value={ex.name}
+                                                    onChange={(e) => updateExample(ex.id, { name: e.target.value })}
+                                                />
+                                            ) : (
+                                                <span className="font-bold text-dark-100 text-sm">{ex.name}</span>
+                                            )}
+                                            
+                                            <div className="flex items-center gap-2">
+                                                {isEditing ? (
+                                                    <input 
+                                                        type="number"
+                                                        className="w-16 bg-dark-800 border border-dark-700 rounded px-2 py-1 text-xs text-primary-400 font-mono outline-none"
+                                                        value={ex.response_status}
+                                                        onChange={(e) => updateExample(ex.id, { response_status: parseInt(e.target.value) })}
+                                                    />
+                                                ) : (
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${ex.response_status < 400 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                        {ex.response_status}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] text-dark-600 font-mono italic">{ex.response_time}ms</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            {isEditing && (
+                                                <button 
+                                                    onClick={() => deleteExample(ex.id)}
+                                                    className="p-2 hover:bg-red-500/10 rounded-lg text-dark-500 hover:text-red-500 transition-all"
+                                                    title="Delete Example"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-4 bg-dark-950/20">
+                                        {isEditing ? (
+                                            <textarea 
+                                                className="w-full bg-dark-900/50 border border-dark-800 rounded-xl p-4 font-mono text-[11px] text-dark-300 outline-none focus:ring-1 focus:ring-primary-500/30 min-h-[150px] custom-scrollbar"
+                                                value={typeof ex.response_body === 'string' ? ex.response_body : JSON.stringify(ex.response_body, null, 2)}
+                                                onChange={(e) => {
+                                                    try {
+                                                        const parsed = JSON.parse(e.target.value);
+                                                        updateExample(ex.id, { response_body: parsed });
+                                                    } catch(err) {
+                                                        updateExample(ex.id, { response_body: e.target.value });
+                                                    }
+                                                }}
+                                            />
+                                        ) : (
+                                            <pre className="text-[11px] font-mono text-dark-400 overflow-auto max-h-[200px] custom-scrollbar">
+                                                {typeof ex.response_body === 'string' ? ex.response_body : JSON.stringify(ex.response_body, null, 2)}
+                                            </pre>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-10 border-2 border-dashed border-dark-800 rounded-3xl text-center">
+                                <p className="text-sm text-dark-500 italic mb-2">Chưa có Response Example nào cho API này.</p>
+                                {isEditing && (
+                                    <button 
+                                        onClick={() => saveExample({
+                                            request_id: request.id,
+                                            name: 'New Mock Response',
+                                            response_status: 200,
+                                            response_body: { message: "Mock success" },
+                                            response_headers: { "Content-Type": "application/json" },
+                                            response_time: 100
+                                        })}
+                                        className="text-xs text-primary-500 font-bold hover:underline"
+                                    >
+                                        Tạo Mock Response đầu tiên
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -637,6 +869,7 @@ const RequestBuilder = ({ handleSend }) => {
         removeParam,
         examples,
         fetchExamples,
+        saveExample,
         updateExample,
         deleteExample,
         setResponse,
@@ -659,7 +892,7 @@ const RequestBuilder = ({ handleSend }) => {
     };
 
     useEffect(() => {
-        if (activeRequest?.id && activeTab === 'examples') {
+        if (activeRequest?.id && (activeTab === 'examples' || activeTab === 'tab-examples' || activeTab === 'docs')) {
             fetchExamples(activeRequest.id);
         }
     }, [activeRequest?.id, activeTab]);
@@ -819,7 +1052,16 @@ const RequestBuilder = ({ handleSend }) => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 min-h-0">
-                    {activeTab === 'docs' && <DocsTab request={activeRequest} onChange={(val) => setActiveRequest(val)} />}
+                    {activeTab === 'docs' && (
+                        <DocsTab 
+                            request={activeRequest} 
+                            onChange={(val) => setActiveRequest(val)} 
+                            examples={examples}
+                            saveExample={saveExample}
+                            updateExample={updateExample}
+                            deleteExample={deleteExample}
+                        />
+                    )}
                     {activeTab === 'params' && (
                         <div className="space-y-3 animate-fade-in">
                             <div className="flex items-center justify-between mb-2">
