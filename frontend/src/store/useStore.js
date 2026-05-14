@@ -109,6 +109,7 @@ const useStore = create((set, get) => ({
     },
     response: JSON.parse(localStorage.getItem('activeResponse')) || null,
     isLoading: false,
+    isLoadingCollections: false,
     toast: { message: '', type: 'success', visible: false },
 
     showToast: (message, type = 'success') => {
@@ -409,6 +410,7 @@ const useStore = create((set, get) => ({
     fetchCollections: async () => {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1';
         const token = get().token;
+        set({ isLoadingCollections: true });
         try {
             const res = await axios.get(`${API_URL}/collections`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -450,10 +452,11 @@ const useStore = create((set, get) => ({
 
             set({
                 collections: mappedCollections,
-                isLoading: false
+                isLoadingCollections: false
             });
         } catch (err) {
             console.error('Failed to fetch collections', err);
+            set({ isLoadingCollections: false });
         }
     },
 

@@ -258,7 +258,7 @@ const SidebarRequest = ({
                 className={`group flex items-center gap-2 px-1.5 hover:bg-dark-800/50 rounded-lg cursor-pointer transition-all ${activeRequest?.id === req.id ? 'bg-primary-500/10 text-primary-400' : ''}`}
             >
                 <div
-                    onClick={(e) => toggleRequest(e, req.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleRequest(req.id); }}
                     className={`p-1 hover:bg-dark-700 rounded transition-colors ${req.examples?.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 >
                     {expandedRequests[req.id] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -382,7 +382,7 @@ const Sidebar = ({
       deleteRequest, duplicateRequest, deleteCollection, loadExample, 
       deleteExample, exportCollection, importCollection, reorderRequests, reorderFolders,
       expandedFolders, toggleFolder, expandedRequests, toggleRequest,
-      expandedCollections, toggleCollection, isLoading
+      expandedCollections, toggleCollection, isLoadingCollections: isLoading
     } = useStore();
     const fileInputRef = React.useRef(null);
     const [dragOverId, setDragOverId] = useState(null);
