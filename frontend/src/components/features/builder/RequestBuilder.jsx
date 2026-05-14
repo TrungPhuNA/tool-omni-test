@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info, Zap } from 'lucide-react';
+import { Play, Plus, Trash2, ShieldCheck, Save, Settings2, Check, Edit3, Info, Zap, Copy } from 'lucide-react';
 import Select from 'react-select';
 import useStore from '../../../store/useStore';
 import SaveSnapshotModal from '../../common/SaveSnapshotModal';
@@ -417,6 +417,74 @@ const DocsTab = ({ request, onChange, examples, saveExample, updateExample, dele
         onChange({ params: newParams });
     };
     
+    const [isCopied, setIsCopied] = useState(false);
+
+    const generateMarkdownDocs = () => {
+        let md = `# ${request.method} ${request.name || 'Untitled API'}\n\n`;
+        md += `**URL:** \`${request.url || 'No URL'}\`\n\n`;
+        
+        if (request.documentation) {
+            md += `## Introduction\n${request.documentation}\n\n`;
+        }
+
+        // Headers
+        const enabledHeaders = request.headers?.filter(h => h.enabled && h.key) || [];
+        if (enabledHeaders.length > 0) {
+            md += `## Headers\n| Key | Value | Required | Description |\n|---|---|---|---|\n`;
+            enabledHeaders.forEach(h => {
+                md += `| ${h.key} | ${h.value} | ${h.required ? 'Yes' : 'No'} | ${h.description || '-'} |\n`;
+            });
+            md += `\n`;
+        }
+
+        // Params
+        const enabledParams = request.params?.filter(p => p.enabled && p.key) || [];
+        if (enabledParams.length > 0) {
+            md += `## Parameters\n| Key | Type | Value | Required | Description |\n|---|---|---|---|---|\n`;
+            enabledParams.forEach(p => {
+                md += `| ${p.key} | ${p.type || 'string'} | ${p.value} | ${p.required ? 'Yes' : 'No'} | ${p.description || '-'} |\n`;
+            });
+            md += `\n`;
+        }
+
+        // Body
+        if (request.body && request.body.mode !== 'none') {
+            md += `## Request Body (${request.body.mode})\n`;
+            if (request.body.mode === 'raw') {
+                md += `\`\`\`${request.body.options?.raw?.language || 'json'}\n${request.body.raw || ''}\n\`\`\`\n\n`;
+            } else {
+                const mode = request.body.mode === 'form-data' ? 'formData' : 'urlencoded';
+                const fields = request.body[mode]?.filter(f => f.enabled && f.key) || [];
+                if (fields.length > 0) {
+                    md += `| Key | Value | Description |\n|---|---|---|\n`;
+                    fields.forEach(f => {
+                        md += `| ${f.key} | ${f.value} | ${f.description || '-'} |\n`;
+                    });
+                    md += `\n`;
+                }
+            }
+        }
+
+        // Examples
+        if (examples && examples.length > 0) {
+            md += `## Response Examples\n`;
+            examples.forEach(ex => {
+                md += `### ${ex.name} (Status: ${ex.response_status})\n`;
+                const bodyStr = typeof ex.response_body === 'string' ? ex.response_body : JSON.stringify(ex.response_body, null, 2);
+                md += `\`\`\`json\n${bodyStr}\n\`\`\`\n\n`;
+            });
+        }
+
+        return md;
+    };
+
+    const handleCopy = () => {
+        const content = generateMarkdownDocs();
+        navigator.clipboard.writeText(content);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+    };
+
     return (
         <div className="flex flex-col h-full animate-fade-in pr-2">
             <div className="flex items-center justify-between mb-6">
@@ -428,6 +496,17 @@ const DocsTab = ({ request, onChange, examples, saveExample, updateExample, dele
                     <p className="text-[10px] text-dark-500 font-medium uppercase tracking-wider italic">Trình chỉnh sửa tài liệu tích hợp toàn diện</p>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={handleCopy}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                            isCopied 
+                            ? 'bg-green-500/10 text-green-500 border-green-500/20' 
+                            : 'bg-dark-800 text-dark-300 border-dark-700 hover:bg-dark-700 hover:text-dark-100'
+                        }`}
+                    >
+                        {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {isCopied ? 'Copied!' : 'Copy Markdown'}
+                    </button>
                     {isEditing && (
                         <button 
                             onClick={generateAutoDocs}
